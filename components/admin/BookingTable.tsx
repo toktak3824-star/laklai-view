@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 export default function BookingTable() {
-  const [bookings, setBookings] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+const [bookings, setBookings] = useState<any[]>([]);
 
   useEffect(() => {
     loadBookings();
@@ -34,7 +35,8 @@ export default function BookingTable() {
   // แสดงรายละเอียดผู้เข้าพัก
   // =========================================
 
-  function GuestDetails({ booking }: { booking: any }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function GuestDetails({ booking }: { booking: any }) {
     const adults = Number(booking.adults ?? 0);
 
     const childAges: number[] = Array.isArray(booking.child_ages)

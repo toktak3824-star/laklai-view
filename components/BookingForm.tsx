@@ -47,16 +47,14 @@ const handleCalendarDateSelect = (date: string) => {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  const [isHoliday, setIsHoliday] = useState(false);
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
-
-  useEffect(() => {
-    if (!checkIn) return;
-
-    const day = new Date(checkIn).getDay();
-
-    setIsHoliday(day === 0 || day === 6);
-  }, [checkIn]);
+  
+  const isHoliday = checkIn
+  ? (() => {
+      const day = new Date(checkIn).getDay();
+      return day === 0 || day === 6;
+    })()
+  : false;
 
   const bookingResult = useMemo(() => {
   if (!checkIn || !checkOut) {

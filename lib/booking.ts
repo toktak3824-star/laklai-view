@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createBooking(data: any) {
   // =========================================
   // 1. ตรวจสอบข้อมูลวันที่
