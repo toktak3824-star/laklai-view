@@ -48,7 +48,7 @@ const handleCalendarDateSelect = (date: string) => {
   const [email, setEmail] = useState("");
 
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
-  
+
   const isHoliday = checkIn
   ? (() => {
       const day = new Date(checkIn).getDay();
@@ -259,12 +259,13 @@ const totalPrice = bookingResult?.grandTotal ?? 0;
           className="w-full rounded-xl border border-stone-300 bg-white p-3 text-black placeholder:text-stone-400"
         />
         <input
-          type="email"
-          placeholder="อีเมล"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-xl border border-stone-300 bg-white p-3 text-black placeholder:text-stone-400"
-        />
+  type="email"
+  placeholder="อีเมล"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  required
+  className="w-full rounded-xl border border-stone-300 bg-white p-3 text-black placeholder:text-stone-400"
+/>
         <input
           type="tel"
           placeholder="เบอร์โทรศัพท์"
@@ -611,6 +612,21 @@ if (totalGuests > 4) {
       "กำลังส่ง Email..."
     );
 
+const customerEmail = email.trim();
+
+if (!customerEmail) {
+  alert("กรุณากรอกอีเมล");
+  return;
+}
+
+if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+  alert("กรุณากรอกอีเมลให้ถูกต้อง");
+  return;
+}
+
+console.log("กำลังส่ง Email...");
+console.log("Customer Email =", customerEmail);
+
     const emailResponse = await fetch(
       "/api/send-email",
       {
@@ -618,8 +634,9 @@ if (totalGuests > 4) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-  email,
+
+  body: JSON.stringify({
+  email, customerEmail,
   guestName,
   roomName: room.title,
   checkIn,

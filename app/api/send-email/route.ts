@@ -21,6 +21,17 @@ export async function POST(req: Request) {
       childAges,
     } = await req.json();
 
+    const customerEmailAddress = String(email ?? "").trim();
+if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmailAddress)) {
+  return NextResponse.json(
+    {
+      error: "Invalid customer email",
+    },
+    {
+      status: 400,
+    }
+  );
+}
     // =========================================
     // จัดข้อมูลผู้เข้าพัก
     // =========================================
@@ -98,7 +109,7 @@ export async function POST(req: Request) {
       await resend.emails.send({
         from: "Laklai View <booking@laklaiview.com>",
 
-        to: email,
+        to: customerEmailAddress,
 
         subject: "ยืนยันการได้รับคำขอจอง Laklai View",
 
