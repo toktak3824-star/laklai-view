@@ -2,7 +2,10 @@ import RoomCard from "./RoomCard";
 import { rooms } from "../data/rooms";
 export default function Rooms() {
   return (
-    <section className="py-20 bg-gradient-to-b from-green-950 via-green-900 to-stone-900">
+    <section
+  id="rooms"
+  className="py-20 bg-gradient-to-b from-green-950 via-green-900 to-stone-900"
+>
       <div className="max-w-7xl mx-auto px-8">
 
         <h2 className="text-5xl font-bold text-center mb-4 text-amber-100">
