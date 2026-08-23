@@ -465,11 +465,12 @@ if (!district?.trim()) {
         ];
 
         const validGrinds = [
-          "whole_bean",
-          "drip",
-          "espresso",
-          "moka",
-        ];
+  "whole",
+  "whole_bean",
+  "drip",
+  "espresso",
+  "moka",
+];
 
         if (
           !validVarieties.includes(
@@ -1171,7 +1172,197 @@ export async function PATCH(req: Request) {
         });
       }
     }
+    // =========================================
+    // ถ้า CANCEL
+    // ส่งอีเมลแจ้งลูกค้าว่าคำสั่งซื้อถูกยกเลิก
+    // =========================================
+    if (action === "cancel") {
 
+      try {
+
+        const customerEmail =
+          String(order.email ?? "").trim();
+
+        if (!customerEmail) {
+          throw new Error(
+            "ไม่พบอีเมลของลูกค้า"
+          );
+        }
+
+        const customerName =
+          `${order.first_name ?? ""} ${order.last_name ?? ""}`.trim();
+
+        const emailResult =
+          await resend.emails.send({
+
+            from: FROM_EMAIL,
+
+            to: customerEmail,
+
+            subject:
+              `❌ แจ้งยกเลิกคำสั่งซื้อ — ${order.order_code}`,
+
+            html: `
+              <div
+                style="
+                  font-family: Arial, sans-serif;
+                  line-height: 1.8;
+                  color: #222;
+                  max-width: 680px;
+                  margin: auto;
+                  padding: 20px;
+                "
+              >
+
+                <div
+                  style="
+                    background:#14532d;
+                    color:white;
+                    padding:30px;
+                    border-radius:18px;
+                    text-align:center;
+                  "
+                >
+
+                  <h1 style="margin:0;">
+                    Laklai View Coffee
+                  </h1>
+
+                  <p style="margin-bottom:0;">
+                    แจ้งสถานะคำสั่งซื้อ
+                  </p>
+
+                </div>
+
+                <div
+                  style="
+                    background:#f5f5f4;
+                    margin-top:20px;
+                    padding:30px;
+                    border-radius:18px;
+                  "
+                >
+
+                  <h2 style="color:#991b1b;">
+                    ❌ คำสั่งซื้อถูกยกเลิกแล้ว
+                  </h2>
+
+                  <p>
+                    สวัสดีคุณ
+                    <strong>
+                      ${escapeHtml(customerName)}
+                    </strong>
+                  </p>
+
+                  <p>
+                    ทาง Laklai View Coffee
+                    ขอแจ้งให้ทราบว่า
+                    คำสั่งซื้อของคุณถูกยกเลิกเรียบร้อยแล้ว
+                  </p>
+
+                  <hr />
+
+                  <h3>
+                    รายละเอียดคำสั่งซื้อ
+                  </h3>
+
+                  <p>
+                    <strong>
+                      เลขที่คำสั่งซื้อ:
+                    </strong>
+                    ${escapeHtml(order.order_code)}
+                  </p>
+
+                  <p>
+                    <strong>
+                      ยอดคำสั่งซื้อ:
+                    </strong>
+                    ฿${Number(
+                      order.total_price || 0
+                    ).toLocaleString("th-TH")}
+                  </p>
+
+                  <p>
+                    <strong>
+                      สถานะ:
+                    </strong>
+
+                    <span style="color:#991b1b;">
+                      ยกเลิกแล้ว
+                    </span>
+                  </p>
+
+                  <div
+                    style="
+                      background:#fee2e2;
+                      border:1px solid #fecaca;
+                      color:#991b1b;
+                      padding:20px;
+                      border-radius:12px;
+                      margin-top:25px;
+                      text-align:center;
+                    "
+                  >
+
+                    <strong>
+                      คำสั่งซื้อ
+                      ${escapeHtml(order.order_code)}
+                      ถูกยกเลิกแล้ว
+                    </strong>
+
+                  </div>
+
+                  <p style="margin-top:30px;">
+                    หากมีข้อสงสัยเกี่ยวกับคำสั่งซื้อนี้
+                    กรุณาติดต่อ Laklai View Coffee
+                  </p>
+
+                  <p>
+                    ขอบคุณที่เลือก
+                    <strong>
+                      Laklai View Coffee ❤️
+                    </strong>
+                  </p>
+
+                </div>
+
+              </div>
+            `,
+          });
+
+        console.log(
+          "CANCEL EMAIL SENT =",
+          emailResult
+        );
+
+        if (emailResult.error) {
+          throw new Error(
+            emailResult.error.message
+          );
+        }
+
+      } catch (emailError) {
+
+        console.error(
+          "CANCEL EMAIL ERROR =",
+          emailError
+        );
+
+        return NextResponse.json({
+          success: true,
+
+          warning:
+            "ยกเลิกคำสั่งซื้อแล้ว แต่ส่งอีเมลแจ้งลูกค้าไม่สำเร็จ",
+
+          emailError:
+            emailError instanceof Error
+              ? emailError.message
+              : String(emailError),
+
+          order: updatedOrder,
+        });
+      }
+    }
     // =========================================
     // สำเร็จ
     // =========================================

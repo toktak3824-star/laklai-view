@@ -18,7 +18,7 @@ type SizeGrams =
   | "1000";
 
 type GrindType =
-  | "whole"
+  | "whole_bean"
   | "drip"
   | "espresso"
   | "moka";
@@ -50,7 +50,7 @@ const grindNames: Record<
   GrindType,
   string
 > = {
-  whole: "ไม่บด — เมล็ดเต็ม",
+  whole_bean: "ไม่บด — เมล็ดเต็ม",
   drip: "บดดริป",
   espresso: "บดเอสเพรสโซ่",
   moka: "บดโมก้าพอต",
@@ -665,7 +665,6 @@ export default function CoffeeOrderForm({
               placeholder="อำเภอ / เขต"
               className="rounded-xl border border-white/10 bg-[#171b16] px-4 py-3 text-white placeholder:text-stone-500 outline-none focus:border-emerald-500"
             />
-
 
             <input
               value={province}

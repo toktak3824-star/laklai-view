@@ -8,7 +8,7 @@ import CoffeeOrderForm from "../components/coffee/CoffeeOrderForm";
 type BeanType = "arabica" | "robusta";
 type RoastType = "light" | "medium" | "dark";
 type SizeType = "250" | "500" | "1000";
-type GrindType = "whole" | "drip" | "espresso" | "moka";
+type GrindType = "whole_bean" | "drip" | "espresso" | "moka";
 
 const beans = {
   arabica: {
@@ -104,7 +104,7 @@ const coffeeImages: Record<BeanType, Record<RoastType, string>> = {
 
 const grindOptions = [
   {
-    id: "whole" as GrindType,
+    id: "whole_bean" as GrindType,
     name: "ไม่บด",
     description: "เมล็ดกาแฟเต็มเมล็ด",
   },
@@ -245,7 +245,7 @@ export default function CoffeePage() {
     useState<SizeType>("250");
 
   const [grind, setGrind] =
-    useState<GrindType>("whole");
+    useState<GrindType>("whole_bean");
 
   const selectedBean = beans[beanType];
 
@@ -263,7 +263,7 @@ export default function CoffeePage() {
     const selectedPrice =
       productPrices[beanType][roast][size];
 
-    return grind === "whole"
+    return grind === "whole_bean"
       ? selectedPrice.whole
       : selectedPrice.ground;
   }, [
