@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { isAdminAuthenticated } from "@/lib/adminAuth";
 
 export async function POST(req: Request) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json({ error: "ไม่มีสิทธิ์เข้าถึง" }, { status: 401 });
+  }
+
+
   try {
     const {
       roomId,

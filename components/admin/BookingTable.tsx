@@ -23,7 +23,7 @@ const [bookings, setBookings] = useState<any[]>([]);
       case "house2":
         return "บ้านพักใจ";
       case "house3":
-        return "บ้านแสงดาว";
+        return "บ้านอุ่นใจ";
       case "house4":
         return "บ้านสุขใจ";
       default:

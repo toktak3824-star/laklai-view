@@ -63,7 +63,7 @@ export const rooms = [
       return `/images/house3/${number}.jpg`;
     }),
     pricing: {
-    weekday: 2100,
+    weekday: 2090,
     originalWeekday: 2500,
     holiday: 2390,
     originalHoliday: 2790,
@@ -89,7 +89,7 @@ export const rooms = [
       return `/images/house4/${number}.jpg`;
     }),
     pricing: {
-    weekday: 1700,
+    weekday: 1699,
     originalWeekday: 2100,
     holiday: 1890,
     originalHoliday: 2290,

@@ -58,6 +58,7 @@ export default function AvailabilityCalendar({
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   // =========================================
   // โหลดข้อมูลสถานะการจอง
@@ -105,7 +106,7 @@ export default function AvailabilityCalendar({
     }
 
     loadAvailability();
-  }, [roomId, currentMonth]);
+  }, [roomId, currentMonth, refreshToken]);
 
   // =========================================
   // วันที่ถูกปิดรับจอง
@@ -177,7 +178,7 @@ export default function AvailabilityCalendar({
   // กดวันที่
   // =========================================
 
-  function handleDateClick(date: Date) {
+  async function handleDateClick(date: Date) {
     const dateString = formatDate(date);
 
     // ห้ามเลือกวันที่ผ่านมาแล้ว
@@ -186,6 +187,42 @@ export default function AvailabilityCalendar({
     }
 
     const status = getDateStatus(dateString);
+
+    // =======================================
+    // โหมดผู้ดูแล: คลิกเพื่อเปิด/ปิดรับจอง
+    // =======================================
+    if (admin) {
+      if (status === "booked") {
+        alert("วันที่มีลูกค้าจองแล้ว ไม่สามารถปิดรับจองซ้ำได้");
+        return;
+      }
+
+      let reason = "";
+      if (status === "available") {
+        reason = window.prompt("เหตุผลที่ต้องการปิดรับจองวันที่นี้ (เว้นว่างได้)", "") || "";
+      } else if (status === "blocked") {
+        const confirmed = window.confirm("ต้องการเปิดรับจองวันที่นี้อีกครั้งใช่หรือไม่?");
+        if (!confirmed) return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await fetch("/api/admin/blocked-dates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomId, blockedDate: dateString, reason }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.error || "ไม่สามารถเปลี่ยนสถานะวันได้");
+        alert(data.message || "เปลี่ยนสถานะวันที่เรียบร้อยแล้ว");
+        setRefreshToken((value) => value + 1);
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "ไม่สามารถเปลี่ยนสถานะวันได้");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     // จองแล้ว
     if (status === "booked") {
@@ -437,8 +474,9 @@ export default function AvailabilityCalendar({
             className +=
               " cursor-not-allowed border-red-700 bg-red-600 text-white";
           } else if (status === "blocked") {
-            className +=
-              " cursor-not-allowed border-stone-600 bg-stone-600 text-white";
+            className += admin
+              ? " cursor-pointer border-stone-600 bg-stone-600 text-white hover:bg-stone-500"
+              : " cursor-not-allowed border-stone-600 bg-stone-600 text-white";
           } else {
             className +=
               " cursor-pointer border-stone-700 bg-stone-900 text-white hover:border-emerald-400 hover:bg-stone-800";
@@ -455,8 +493,7 @@ export default function AvailabilityCalendar({
               type="button"
               disabled={
                 isPast ||
-                status === "booked" ||
-                status === "blocked"
+                (status === "booked")
               }
               onClick={() =>
                 handleDateClick(date)
@@ -520,27 +557,27 @@ export default function AvailabilityCalendar({
       {/* คำแนะนำ */}
 
       <div className="mt-6 rounded-2xl border border-amber-700/70 bg-stone-900 p-4 text-sm leading-6 text-amber-300">
-
-        <strong>
-          วิธีเลือกวันเข้าพัก
-        </strong>
-
+        <strong>{admin ? "วิธีจัดการปฏิทินสำหรับผู้ดูแล" : "วิธีเลือกวันเข้าพัก"}</strong>
         <br />
-
-        1. กดวันที่สีเขียวที่ต้องการเข้าพัก
-
-        <br />
-
-        2. กดวันที่สีเขียวที่ต้องการออก
-
-        <br />
-
-        3. วันที่สีแดงคือมีผู้จองแล้ว
-
-        <br />
-
-        4. วันที่สีเทาคือ 🔒 ปิดรับจอง
-
+        {admin ? (
+          <>
+            1. คลิกวันที่สีเขียวเพื่อปิดรับจอง
+            <br />
+            2. คลิกวันที่สีเทาเพื่อเปิดรับจองอีกครั้ง
+            <br />
+            3. วันที่สีแดงคือมีลูกค้าจองแล้วและแก้ไม่ได้จากตรงนี้
+          </>
+        ) : (
+          <>
+            1. กดวันที่สีเขียวที่ต้องการเข้าพัก
+            <br />
+            2. กดวันที่สีเขียวที่ต้องการออก
+            <br />
+            3. วันที่สีแดงคือมีผู้จองแล้ว
+            <br />
+            4. วันที่สีเทาคือ 🔒 ปิดรับจอง
+          </>
+        )}
       </div>
 
     </div>

@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { isAdminAuthenticated } from "@/lib/adminAuth";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json({ error: "ไม่มีสิทธิ์เข้าถึง" }, { status: 401 });
+  }
+
+
   try {
     const { id } = await req.json();
 
@@ -207,7 +213,7 @@ export async function POST(req: Request) {
     : booking.room_id === "house2"
     ? "บ้านพักใจ"
     : booking.room_id === "house3"
-    ? "บ้านแสงดาว"
+    ? "บ้านอุ่นใจ"
     : booking.room_id === "house4"
     ? "บ้านสุขใจ"
     : booking.room_id
