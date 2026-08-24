@@ -8,7 +8,7 @@ export default function Hero() {
       <div className="relative h-[72svh] min-h-[500px] w-full sm:h-[75vh] sm:min-h-[560px]">
         <Image
           src="/images/hero/hero.jpg"
-          alt="หลักลาย View ที่พักปัว จังหวัดน่าน วิวภูเขาท่ามกลางธรรมชาติ"
+          alt="หลักลาย View ที่พักสุดเขตปัว จังหวัดน่าน วิวภูเขาท่ามกลางธรรมชาติ"
           fill
           priority
           sizes="100vw"
@@ -37,7 +37,7 @@ export default function Hero() {
             </p>
 
             <p className="mx-auto mt-2 max-w-md text-sm leading-7 text-white/90 sm:text-lg">
-              กลับมาใช้เวลาในธรรมชาติอีกครั้ง
+              กลับมาใช้เวลาช้าๆ ในท่ามกลางธรรมชาติอีกครั้ง
             </p>
           </div>
         </div>
