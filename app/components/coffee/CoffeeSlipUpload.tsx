@@ -1,98 +1,145 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
-type CoffeeSlipUploadProps = {
+type Props = {
   orderCode: string;
 };
 
-export default function CoffeeSlipUpload({
-  orderCode,
-}: CoffeeSlipUploadProps) {
-  const [file, setFile] =
-    useState<File | null>(null);
+const MAX_OUTPUT_SIZE = 1.5 * 1024 * 1024; // 1.5 MB
+const MAX_IMAGE_WIDTH = 1800;
 
-  const [preview, setPreview] =
-    useState<string>("");
+async function compressImage(file: File): Promise<File> {
+  const imageUrl = URL.createObjectURL(file);
 
-  const [loading, setLoading] =
-    useState(false);
+  try {
+    const img = new Image();
 
-  const [success, setSuccess] =
-    useState(false);
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("ไม่สามารถอ่านรูปภาพได้"));
+      img.src = imageUrl;
+    });
 
-  const [error, setError] =
-    useState("");
+    const scale = Math.min(
+      1,
+      MAX_IMAGE_WIDTH / img.naturalWidth
+    );
 
-  function handleFileChange(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
-    setError("");
-    setSuccess(false);
+    const width = Math.round(img.naturalWidth * scale);
+    const height = Math.round(img.naturalHeight * scale);
 
-    const selectedFile =
-      event.target.files?.[0];
+    const canvas = document.createElement("canvas");
 
-    if (!selectedFile) {
-      return;
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      throw new Error("ไม่สามารถประมวลผลรูปภาพได้");
     }
 
-    const allowedTypes = [
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "image/webp",
-    ];
+    ctx.drawImage(img, 0, 0, width, height);
 
-    if (
-      !allowedTypes.includes(
-        selectedFile.type
-      )
-    ) {
-      setError(
-        "กรุณาเลือกไฟล์ JPG, PNG หรือ WEBP"
+    let quality = 0.82;
+
+    let blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", quality)
+    );
+
+    if (!blob) {
+      throw new Error("ไม่สามารถสร้างไฟล์รูปภาพได้");
+    }
+
+    // ถ้ายังใหญ่เกินไป ให้ลดคุณภาพลงอีก
+    while (blob.size > MAX_OUTPUT_SIZE && quality > 0.45) {
+      quality -= 0.07;
+
+      blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", quality)
       );
 
-      setFile(null);
-      setPreview("");
-
-      return;
+      if (!blob) {
+        throw new Error("ไม่สามารถบีบอัดรูปภาพได้");
+      }
     }
 
-    if (
-      selectedFile.size >
-      5 * 1024 * 1024
-    ) {
-      setError(
-        "ไฟล์สลิปต้องมีขนาดไม่เกิน 5 MB"
-      );
+    return new File(
+      [blob],
+      `${file.name.replace(/\.[^/.]+$/, "")}.jpg`,
+      {
+        type: "image/jpeg",
+      }
+    );
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+}
 
-      setFile(null);
-      setPreview("");
+async function readResponse(response: Response) {
+  const text = await response.text();
 
-      return;
-    }
-
-    setFile(selectedFile);
-
-    const previewUrl =
-      URL.createObjectURL(selectedFile);
-
-    setPreview(previewUrl);
+  if (!text) {
+    return {};
   }
 
-  async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>
+  try {
+    return JSON.parse(text);
+  } catch {
+    if (response.status === 413) {
+      throw new Error(
+        "ไฟล์สลิปมีขนาดใหญ่เกินไป ระบบไม่สามารถรับไฟล์ได้"
+      );
+    }
+
+    throw new Error(
+      `เซิร์ฟเวอร์ส่งข้อมูลที่ไม่ถูกต้อง (${response.status})`
+    );
+  }
+}
+
+export default function CoffeeSlipUpload({
+  orderCode,
+}: Props) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(null);
+
+  const [previewUrl, setPreviewUrl] =
+    useState<string | null>(null);
+
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleFileChange(
+    e: React.ChangeEvent<HTMLInputElement>
   ) {
-    event.preventDefault();
+    const file = e.target.files?.[0];
 
     setError("");
     setSuccess(false);
 
     if (!file) {
+      return;
+    }
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
       setError(
-        "กรุณาเลือกสลิปการชำระเงินก่อน"
+        "กรุณาเลือกไฟล์ JPG, PNG หรือ WEBP เท่านั้น"
       );
+
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
 
       return;
     }
@@ -100,221 +147,214 @@ export default function CoffeeSlipUpload({
     try {
       setLoading(true);
 
-      const formData =
-        new FormData();
+      const compressedFile =
+        await compressImage(file);
 
-      formData.append(
-        "orderCode",
-        orderCode
-      );
+      setSelectedFile(compressedFile);
 
-      formData.append(
-        "slip",
-        file
-      );
+      const url =
+        URL.createObjectURL(compressedFile);
 
-      const response =
-        await fetch(
-          "/api/coffee-payment/submit-slip",
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
+      setPreviewUrl((oldUrl) => {
+        if (oldUrl) {
+          URL.revokeObjectURL(oldUrl);
+        }
 
-      const data =
-        await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-            "ไม่สามารถส่งสลิปได้"
-        );
-      }
-
-      setSuccess(true);
-
-      setFile(null);
-
-      setPreview("");
-
-    } catch (error) {
+        return url;
+      });
+    } catch (err) {
       console.error(
-        "SLIP SUBMIT ERROR =",
-        error
+        "IMAGE COMPRESS ERROR =",
+        err
       );
 
       setError(
-        error instanceof Error
-          ? error.message
-          : "เกิดข้อผิดพลาด กรุณาลองใหม่"
+        err instanceof Error
+          ? err.message
+          : "ไม่สามารถเตรียมรูปสลิปได้"
       );
-
     } finally {
       setLoading(false);
     }
   }
 
-  // =========================================
-  // หลังส่งสลิปสำเร็จ
-  // =========================================
+  async function handleUpload() {
+    if (!selectedFile) {
+      setError("กรุณาเลือกภาพสลิปก่อน");
+      return;
+    }
 
-  if (success) {
-    return (
-      <div className="rounded-3xl border border-emerald-900/50 bg-emerald-950/40 p-8 text-center">
+    if (!orderCode) {
+      setError("ไม่พบเลขคำสั่งซื้อ");
+      return;
+    }
 
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-700 text-3xl">
-          ✓
-        </div>
+    setError("");
+    setSuccess(false);
+    setLoading(true);
 
-        <h3 className="mt-5 text-2xl font-semibold text-white">
-          ส่งสลิปเรียบร้อยแล้ว
-        </h3>
+    try {
+      const formData = new FormData();
 
-        <p className="mt-3 leading-8 text-stone-300">
-          เราได้รับหลักฐานการชำระเงินของคุณแล้ว
-          <br />
-          กรุณารอเจ้าหน้าที่ตรวจสอบการชำระเงิน
-        </p>
+      formData.append("orderCode", orderCode);
+      formData.append("slip", selectedFile);
 
-        <div className="mt-6 rounded-2xl bg-[#171b16] p-5">
-          <p className="text-sm text-stone-500">
-            Order Code
-          </p>
+      const response = await fetch(
+        "/api/coffee-orders/slip",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
-          <p className="mt-1 text-lg font-semibold text-emerald-400">
-            {orderCode}
-          </p>
-        </div>
+      const data =
+        await readResponse(response);
 
-      </div>
-    );
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+            data?.detail ||
+            "ไม่สามารถส่งสลิปได้"
+        );
+      }
+
+      console.log(
+        "SLIP UPLOAD SUCCESS =",
+        data
+      );
+
+      setSuccess(true);
+
+      setSelectedFile(null);
+
+      setPreviewUrl((oldUrl) => {
+        if (oldUrl) {
+          URL.revokeObjectURL(oldUrl);
+        }
+
+        return null;
+      });
+
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+    } catch (err) {
+      console.error(
+        "SLIP UPLOAD ERROR =",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "เกิดข้อผิดพลาดในการส่งสลิป"
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-3xl border border-stone-200 bg-white p-7 shadow-sm"
-    >
-
-      <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-emerald-700">
-          PAYMENT CONFIRMATION
-        </p>
-
-        <h3 className="mt-3 text-3xl font-semibold text-stone-900">
-          แนบสลิปการชำระเงิน
-        </h3>
-
-        <p className="mt-4 leading-8 text-stone-600">
-          หลังจากชำระเงินเรียบร้อยแล้ว
-          กรุณาแนบภาพสลิปเพื่อยืนยันคำสั่งซื้อ
-        </p>
-      </div>
-
-      {/* =====================================
-          ORDER CODE
-      ===================================== */}
-
-      <div className="mt-7 rounded-2xl bg-stone-100 p-5">
-
-        <p className="text-sm text-stone-500">
-          Order Code
-        </p>
-
-        <p className="mt-1 text-xl font-semibold text-emerald-700">
-          {orderCode}
-        </p>
-
-      </div>
-
-      {/* =====================================
-          FILE INPUT
-      ===================================== */}
-
-      <label className="mt-7 block">
-
-        <span className="mb-2 block text-sm font-medium text-stone-700">
-          รูปสลิปการโอนเงิน
-        </span>
+    <div className="w-full">
+      <div className="rounded-2xl border-2 border-dashed border-stone-300 bg-stone-50 p-6 text-center">
 
         <input
+          ref={inputRef}
           type="file"
-          accept="image/jpeg,image/jpg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp"
           onChange={handleFileChange}
           disabled={loading}
-          className="block w-full cursor-pointer rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-5 text-sm text-stone-600 file:mr-4 file:rounded-full file:border-0 file:bg-emerald-700 file:px-5 file:py-2.5 file:font-semibold file:text-white hover:border-emerald-500"
+          className="hidden"
+          id="coffee-slip-upload"
         />
 
-      </label>
+        <label
+          htmlFor="coffee-slip-upload"
+          className="inline-flex cursor-pointer items-center justify-center rounded-full bg-stone-800 px-7 py-4 font-semibold text-white transition hover:bg-stone-700 disabled:cursor-not-allowed"
+        >
+          {loading
+            ? "กำลังเตรียมไฟล์..."
+            : "เลือกรูปสลิป"}
+        </label>
 
-      {/* =====================================
-          FILE NAME
-      ===================================== */}
+        {selectedFile && (
+          <div className="mt-5">
+            <p className="text-sm text-stone-600">
+              ไฟล์ที่เตรียมส่ง:
+            </p>
 
-      {file && (
-        <div className="mt-4 rounded-2xl bg-stone-100 p-4">
+            <p className="mt-1 font-semibold text-stone-800">
+              {selectedFile.name}
+            </p>
 
-          <p className="text-sm text-stone-500">
-            ไฟล์ที่เลือก
-          </p>
+            <p className="mt-1 text-sm text-emerald-700">
+              ขนาดหลังย่อ:
+              {" "}
+              {(selectedFile.size / 1024 / 1024).toFixed(2)}
+              {" MB"}
+            </p>
+          </div>
+        )}
 
-          <p className="mt-1 break-all font-medium text-stone-800">
-            {file.name}
-          </p>
+        {previewUrl && (
+          <div className="mt-6 overflow-hidden rounded-2xl bg-white p-3 shadow">
+            <img
+              src={previewUrl}
+              alt="ตัวอย่างสลิปการชำระเงิน"
+              className="mx-auto max-h-[420px] w-full rounded-xl object-contain"
+            />
+          </div>
+        )}
 
-        </div>
-      )}
+        {selectedFile && !success && (
+          <button
+            type="button"
+            onClick={handleUpload}
+            disabled={loading}
+            className="mt-6 w-full rounded-full bg-emerald-700 px-7 py-4 text-lg font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading
+              ? "กำลังส่งสลิป..."
+              : "ส่งสลิปการชำระเงิน"}
+          </button>
+        )}
 
-      {/* =====================================
-          PREVIEW
-      ===================================== */}
+        {success && (
+          <div className="mt-6 rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-800">
+            <p className="text-xl font-bold">
+              ✓ ส่งสลิปเรียบร้อยแล้ว
+            </p>
 
-      {preview && (
-        <div className="mt-6 overflow-hidden rounded-3xl border border-stone-200 bg-stone-50 p-3">
+            <p className="mt-2 text-sm leading-6">
+              ระบบได้รับหลักฐานการชำระเงินแล้ว
+              กรุณารอเจ้าหน้าที่ตรวจสอบ
+            </p>
 
-          <p className="px-3 pb-3 text-sm font-medium text-stone-600">
-            ตัวอย่างสลิป
-          </p>
+            <p className="mt-2 text-sm font-semibold">
+              Order Code: {orderCode}
+            </p>
+          </div>
+        )}
 
-          <img
-            src={preview}
-            alt="ตัวอย่างสลิปการชำระเงิน"
-            className="mx-auto max-h-[500px] rounded-2xl object-contain"
-          />
+        {error && (
+          <div className="mt-5 rounded-2xl border border-red-300 bg-red-50 p-5 text-red-700">
+            <p className="font-bold">
+              ไม่สามารถส่งสลิปได้
+            </p>
 
-        </div>
-      )}
+            <p className="mt-2 text-sm leading-6">
+              {error}
+            </p>
+          </div>
+        )}
 
-      {/* =====================================
-          ERROR
-      ===================================== */}
+        <p className="mt-5 text-sm leading-6 text-stone-500">
+          รองรับ JPG, PNG และ WEBP
+          <br />
+          ระบบจะย่อขนาดภาพให้อัตโนมัติก่อนส่ง
+        </p>
 
-      {error && (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-center text-red-700">
-          {error}
-        </div>
-      )}
-
-      {/* =====================================
-          SUBMIT
-      ===================================== */}
-
-      <button
-        type="submit"
-        disabled={loading || !file}
-        className="mt-7 w-full rounded-full bg-emerald-700 px-8 py-4 text-lg font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading
-          ? "กำลังส่งสลิป..."
-          : "ส่งสลิปการชำระเงิน"}
-      </button>
-
-      <p className="mt-4 text-center text-sm leading-7 text-stone-500">
-        รองรับ JPG, PNG และ WEBP
-        ขนาดไม่เกิน 5 MB
-      </p>
-
-    </form>
+      </div>
+    </div>
   );
 }

@@ -185,20 +185,23 @@ export async function POST(req: Request) {
   }
 }
 
-
 /* =========================================
    GET SLIP
    เปิดสลิปสำหรับผู้ดูแลระบบ
 ========================================= */
 
 export async function GET(req: Request) {
+  // ต้องเข้าสู่ระบบ Admin ก่อนจึงจะเปิดสลิปได้
   if (!(await isAdminAuthenticated())) {
-    return NextResponse.json({ error: "ไม่มีสิทธิ์เข้าถึง" }, { status: 401 });
+    return NextResponse.json(
+      { error: "ไม่มีสิทธิ์เข้าถึง" },
+      { status: 401 }
+    );
   }
-
 
   try {
     const { searchParams } = new URL(req.url);
+
     const orderCode = String(
       searchParams.get("orderCode") || ""
     ).trim();
@@ -210,16 +213,18 @@ export async function GET(req: Request) {
       );
     }
 
-    console.log("GET SLIP ORDER CODE =", orderCode);
-
-    const { data: order, error: orderError } = await supabaseAdmin
-      .from("coffee_orders")
-      .select("id, order_code, slip_url")
-      .eq("order_code", orderCode)
-      .single();
+    const { data: order, error: orderError } =
+      await supabaseAdmin
+        .from("coffee_orders")
+        .select("id, order_code, slip_url")
+        .eq("order_code", orderCode)
+        .single();
 
     if (orderError || !order) {
-      console.error("ORDER NOT FOUND =", orderError);
+      console.error(
+        "ORDER NOT FOUND =",
+        orderError
+      );
 
       return NextResponse.json(
         { error: "ไม่พบคำสั่งซื้อนี้" },
@@ -234,46 +239,104 @@ export async function GET(req: Request) {
       );
     }
 
-    const slipPath = String(order.slip_url).trim();
+    const slipPath = String(
+      order.slip_url
+    ).trim();
 
-    console.log("SLIP URL FROM DB =", slipPath);
-
-    const fileName = slipPath.split("/").pop();
-
-    if (!fileName) {
+    if (!slipPath) {
       return NextResponse.json(
-        { error: "ไม่พบชื่อไฟล์สลิป" },
+        { error: "ไม่พบที่อยู่ไฟล์สลิป" },
         { status: 404 }
       );
     }
 
-    console.log("SEARCHING FILE =", fileName);
+    /*
+      ปกติ POST ด้านบนจะบันทึก path เช่น:
 
-    // ค้นหาทั้ง 2 bucket ที่มีอยู่จริง
+      orders/LKC-xxxx/LKC-xxxx-xxxx.jpg
+
+      จึงลองสร้าง Signed URL จาก path
+      โดยตรงก่อน ไม่ต้องค้นหา Storage ทั้งหมด
+    */
+
     const buckets = [
       "payment-slips",
       "coffee-slips",
     ];
 
-    // ฟังก์ชันค้นหาไฟล์แบบ recursive
+    for (const bucket of buckets) {
+      const { data, error } =
+        await supabaseAdmin.storage
+          .from(bucket)
+          .createSignedUrl(
+            slipPath,
+            60 * 10
+          );
+
+      if (
+        !error &&
+        data?.signedUrl
+      ) {
+        console.log(
+          "SIGNED URL CREATED =",
+          bucket,
+          slipPath
+        );
+
+        return NextResponse.json({
+          success: true,
+          url: data.signedUrl,
+          bucket,
+          path: slipPath,
+        });
+      }
+
+      console.log(
+        "DIRECT SIGNED URL FAILED =",
+        bucket,
+        error
+      );
+    }
+
+    /*
+      Fallback สำหรับสลิปเก่า
+      กรณี path ใน Database ไม่ตรงกับ Storage
+    */
+
+    const fileName = slipPath
+      .split("/")
+      .pop();
+
+    if (!fileName) {
+      return NextResponse.json(
+        {
+          error: "ไม่พบชื่อไฟล์สลิป",
+          databasePath: slipPath,
+        },
+        { status: 404 }
+      );
+    }
+
     async function findFile(
       bucket: string,
       folder = ""
     ): Promise<string | null> {
-      const { data, error } = await supabaseAdmin.storage
-        .from(bucket)
-        .list(folder, {
-          limit: 1000,
-          offset: 0,
-        });
+      const { data, error } =
+        await supabaseAdmin.storage
+          .from(bucket)
+          .list(folder, {
+            limit: 1000,
+            offset: 0,
+          });
 
       if (error || !data) {
         console.log(
-          "LIST ERROR",
+          "STORAGE LIST ERROR =",
           bucket,
           folder,
           error
         );
+
         return null;
       }
 
@@ -283,16 +346,20 @@ export async function GET(req: Request) {
           : item.name;
 
         // เป็นไฟล์
-        if (item.id && item.name === fileName) {
+        if (
+          item.id &&
+          item.name === fileName
+        ) {
           return currentPath;
         }
 
         // เป็นโฟลเดอร์
         if (!item.id) {
-          const found = await findFile(
-            bucket,
-            currentPath
-          );
+          const found =
+            await findFile(
+              bucket,
+              currentPath
+            );
 
           if (found) {
             return found;
@@ -304,11 +371,13 @@ export async function GET(req: Request) {
     }
 
     for (const bucket of buckets) {
-      console.log("SEARCH BUCKET =", bucket);
-
-      const foundPath = await findFile(
+      console.log(
+        "SEARCHING BUCKET =",
         bucket
       );
+
+      const foundPath =
+        await findFile(bucket);
 
       if (!foundPath) {
         continue;
@@ -323,38 +392,35 @@ export async function GET(req: Request) {
       const { data, error } =
         await supabaseAdmin.storage
           .from(bucket)
-          .createSignedUrl(foundPath, 60 * 10);
+          .createSignedUrl(
+            foundPath,
+            60 * 10
+          );
 
-      if (error || !data?.signedUrl) {
-        console.error(
-          "SIGNED URL ERROR =",
-          error
+      if (
+        !error &&
+        data?.signedUrl
+      ) {
+        console.log(
+          "SIGNED URL CREATED SUCCESSFULLY"
         );
 
-        continue;
+        return NextResponse.json({
+          success: true,
+          url: data.signedUrl,
+          bucket,
+          path: foundPath,
+        });
       }
-
-      console.log(
-        "SIGNED URL CREATED SUCCESSFULLY"
-      );
-
-      return NextResponse.json({
-        success: true,
-        url: data.signedUrl,
-        bucket,
-        path: foundPath,
-      });
     }
-
-    console.error(
-      "SLIP FILE NOT FOUND IN ANY BUCKET"
-    );
 
     return NextResponse.json(
       {
-        error: "ไม่พบไฟล์สลิปใน Storage",
+        error:
+          "ไม่พบไฟล์สลิปใน Storage",
         fileName,
-        databasePath: slipPath,
+        databasePath:
+          slipPath,
       },
       { status: 404 }
     );

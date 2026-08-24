@@ -20,7 +20,7 @@ export default function Navbar() {
             className="flex flex-col leading-none text-white"
           >
             <span className="text-[10px] tracking-[0.28em] text-green-300">
-              LAKLAI
+              LAKLAI VIEW
             </span>
             <span className="mt-1 text-xl font-bold tracking-wide sm:text-2xl">
               หลักลาย View
@@ -50,12 +50,12 @@ export default function Navbar() {
               Coffee Shop
             </Link>
 
-            <Link
-              href="/#contact"
-              className="text-sm font-medium text-white/90 transition hover:text-green-300"
-            >
-              ติดต่อเรา
-            </Link>
+            <Link 
+  href="/contact"
+  className="text-sm font-medium text-white/90 transition hover:text-green-300"
+>
+  ติดต่อเรา
+</Link>
 
             <Link
               href="/#rooms"
@@ -113,13 +113,13 @@ export default function Navbar() {
                 ☕ Coffee Shop
               </Link>
 
-              <Link
-                href="/#contact"
-                onClick={closeMenu}
-                className="rounded-xl px-4 py-3.5 text-base font-medium text-white transition hover:bg-white/10"
-              >
-                ติดต่อเรา
-              </Link>
+              <Link 
+  href="/contact"
+  onClick={closeMenu}
+  className="rounded-xl px-4 py-3.5 text-base font-medium text-white transition hover:bg-white/10"
+>
+  ติดต่อเรา
+</Link>
 
               <Link
                 href="/#rooms"

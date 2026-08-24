@@ -13,6 +13,7 @@ export async function POST(req: Request) {
       checkOut,
       totalPrice,
       bookingCode,
+      slipUrl,
 
       // =========================================
       // ข้อมูลผู้เข้าพัก
@@ -100,6 +101,41 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmailAddress)) {
     const extraBedText = needsExtraBed
       ? "🛏️ ต้องเตรียมที่นอนเสริม"
       : "ไม่ต้องเตรียมที่นอนเสริม";
+
+    // =========================================
+    // ลิงก์สำหรับ ADMIN
+    // =========================================
+    const adminUrl =
+      "https://laklaiview.com/admin/bookings";
+
+    const paymentUrl =
+      `https://laklaiview.com/payment/${encodeURIComponent(
+        String(bookingCode ?? "")
+      )}`;
+
+    const cleanSlipUrl = String(slipUrl ?? "").trim();
+
+    const slipButton = cleanSlipUrl
+      ? `
+        <a
+          href="${cleanSlipUrl}"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="
+            display:inline-block;
+            background:#2563eb;
+            color:#ffffff;
+            text-decoration:none;
+            padding:14px 22px;
+            border-radius:10px;
+            font-weight:bold;
+            margin:6px;
+          "
+        >
+          🔎 ดูสลิป
+        </a>
+      `
+      : "";
 
     // =========================================
     // 1. ส่งอีเมลให้ลูกค้า
@@ -422,9 +458,68 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmailAddress)) {
           </ul>
 
           <p>
-            เข้าไปที่ระบบ Admin Dashboard
-            เพื่อดูสลิปและอนุมัติหรือยกเลิกการจอง
+            กรุณาตรวจสอบข้อมูลการจองและหลักฐานการชำระเงิน
+            ก่อนอนุมัติหรือยกเลิกการจอง
           </p>
+
+          <div
+            style="
+              margin-top:25px;
+              padding:18px;
+              background:#f7f7f5;
+              border-radius:12px;
+              text-align:center;
+            "
+          >
+            ${slipButton}
+
+            <a
+              href="${adminUrl}"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="
+                display:inline-block;
+                background:#166534;
+                color:#ffffff;
+                text-decoration:none;
+                padding:14px 22px;
+                border-radius:10px;
+                font-weight:bold;
+                margin:6px;
+              "
+            >
+              🏠 เปิดระบบหลังบ้าน
+            </a>
+
+            <a
+              href="${paymentUrl}"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="
+                display:inline-block;
+                background:#3f4a38;
+                color:#ffffff;
+                text-decoration:none;
+                padding:14px 22px;
+                border-radius:10px;
+                font-weight:bold;
+                margin:6px;
+              "
+            >
+              💳 เปิดหน้าชำระเงิน
+            </a>
+          </div>
+
+          ${
+            cleanSlipUrl
+              ? `<p style="margin-top:15px;color:#555;">
+                  มีสลิปแนบมาแล้ว สามารถกด “🔎 ดูสลิป” เพื่อตรวจสอบได้ทันที
+                </p>`
+              : `<p style="margin-top:15px;color:#777;">
+                  ขณะนี้ยังไม่มีสลิปแนบมา
+                  หากลูกค้ายังไม่ได้อัปโหลด ให้รอตรวจสอบอีกครั้งหลังลูกค้าแนบหลักฐาน
+                </p>`
+          }
 
         </div>
       `,

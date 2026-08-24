@@ -133,6 +133,7 @@ async function sendCoffeeOrderEmails({
   subtotal,
   shippingFee,
   totalPrice,
+  slipUrl,
 }: {
   order: { order_code: string };
   customerEmail: string;
@@ -156,6 +157,7 @@ async function sendCoffeeOrderEmails({
   subtotal: number;
   shippingFee: number;
   totalPrice: number;
+  slipUrl?: string | null;
 }) {
   const orderCode = String(order.order_code);
 
@@ -181,6 +183,22 @@ async function sendCoffeeOrderEmails({
 
   const paymentUrl =
     `https://laklaiview.com/coffee/payment/${encodeURIComponent(orderCode)}`;
+
+  const adminUrl = "https://laklaiview.com/admin/orders";
+  const cleanSlipUrl = String(slipUrl ?? "").trim();
+
+  const slipButton = cleanSlipUrl
+    ? `
+      <a
+        href="${cleanSlipUrl}"
+        target="_blank"
+        rel="noopener noreferrer"
+        style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 22px;border-radius:10px;font-weight:bold;margin:6px;"
+      >
+        🔎 ดูสลิป
+      </a>
+    `
+    : "";
 
   const customerResult = await resend.emails.send({
     from: FROM_EMAIL,
@@ -269,8 +287,37 @@ async function sendCoffeeOrderEmails({
         <hr>
 
         <p>
-          กรุณาตรวจสอบออเดอร์และหลักฐานการชำระเงินในระบบ Admin Dashboard
+          กรุณาตรวจสอบออเดอร์และหลักฐานการชำระเงิน
+          ก่อนยืนยันหรือยกเลิกคำสั่งซื้อ
         </p>
+
+        <div style="margin-top:25px;padding:18px;background:#f7f7f5;border-radius:12px;text-align:center;">
+          ${slipButton}
+
+          <a
+            href="${adminUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="display:inline-block;background:#166534;color:#fff;text-decoration:none;padding:14px 22px;border-radius:10px;font-weight:bold;margin:6px;"
+          >
+            🏠 เปิดระบบหลังบ้าน
+          </a>
+
+          <a
+            href="${paymentUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="display:inline-block;background:#3f4a38;color:#fff;text-decoration:none;padding:14px 22px;border-radius:10px;font-weight:bold;margin:6px;"
+          >
+            💳 เปิดหน้าคำสั่งซื้อ
+          </a>
+        </div>
+
+        ${
+          cleanSlipUrl
+            ? `<p style="margin-top:15px;color:#555;">มีสลิปแนบมาแล้ว สามารถกด “🔎 ดูสลิป” เพื่อตรวจสอบได้ทันที</p>`
+            : `<p style="margin-top:15px;color:#777;">ขณะนี้ยังไม่มีสลิปแนบมา หากลูกค้ายังไม่ได้ชำระเงิน ให้รอการอัปโหลดสลิป</p>`
+        }
       </div>
     `,
   });
@@ -348,6 +395,7 @@ export async function POST(req: Request) {
       postalCode,
 
       items,
+      slipUrl,
     } = body;
 
     // =========================================
@@ -730,6 +778,7 @@ shipping_fee:
         subtotal,
         shippingFee: SHIPPING_FEE,
         totalPrice,
+        slipUrl: slipUrl ?? null,
       });
 
       emailSent = true;
