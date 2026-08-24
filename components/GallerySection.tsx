@@ -89,38 +89,50 @@ const images = [
 
 export default function GallerySection() {
   return (
-    <section className="py-24 bg-gradient-to-b from-[#214D34] to-[#18392B]">
-      <div className="max-w-7xl mx-auto px-6">
+    <section className="bg-gradient-to-b from-[#214D34] to-[#18392B] py-14 sm:py-20 lg:py-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
-        <h2 className="text-5xl font-bold text-center text-stone-50 mb-4">
-          สัมผัสบรรยากาศ Laklai View
-        </h2>
+        {/* Heading */}
+        <div className="mx-auto mb-9 max-w-3xl text-center sm:mb-14">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-green-200 sm:text-sm">
+            EXPERIENCE LAKLAI VIEW
+          </p>
 
-        <p className="text-center text-stone-200 text-xl mb-14">
-          ทุกช่วงเวลาที่นี่ คือความทรงจำที่เรียบง่าย อบอุ่น และโอบล้อมด้วยธรรมชาติ
-        </p>
+          <h2 className="text-3xl font-bold leading-tight text-stone-50 sm:text-4xl lg:text-5xl">
+            สัมผัสบรรยากาศ Laklai View
+          </h2>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+          <p className="mt-4 text-sm leading-7 text-stone-200 sm:text-lg sm:leading-8">
+            ทุกช่วงเวลาที่นี่ คือความทรงจำที่เรียบง่าย
+            อบอุ่น และโอบล้อมด้วยธรรมชาติ
+          </p>
+        </div>
+
+        {/* Gallery */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:gap-6">
           {images.map((image) => (
             <div
-  key={image.src}
-  className="group relative overflow-hidden rounded-3xl shadow-xl"
->
-  <Image
-    src={image.src}
-    alt={image.alt}
-    width={800}
-    height={600}
-    className="w-full h-72 object-cover transition duration-500 group-hover:scale-110"
-  />
+              key={image.src}
+              className="group relative aspect-[4/3] overflow-hidden rounded-2xl bg-stone-900 shadow-lg sm:rounded-3xl"
+            >
+              <Image
+                src={image.src}
+                alt={image.alt}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 33vw"
+                className="object-cover transition duration-500 group-hover:scale-105"
+              />
 
-  {/* คำอธิบายรูป */}
-  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-5 pb-5 pt-12">
-    <p className="text-base font-medium text-white drop-shadow-md">
-      {image.alt}
-    </p>
-  </div>
-</div>
+              {/* Gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-90" />
+
+              {/* Caption */}
+              <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 md:p-5">
+                <p className="line-clamp-3 text-[11px] font-medium leading-5 text-white drop-shadow-md sm:text-sm sm:leading-6">
+                  {image.alt}
+                </p>
+              </div>
+            </div>
           ))}
         </div>
 
