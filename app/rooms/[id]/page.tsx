@@ -21,33 +21,45 @@ export async function generateMetadata({
 
   if (!room) {
     return {
-      title: "ไม่พบข้อมูลที่พัก | Laklai View",
-      description: "ไม่พบข้อมูลบ้านพักที่ต้องการ",
+      title: "ไม่พบห้องพัก | Laklai View",
     };
   }
 
+  const title = `${room.title} | Laklai View ที่พักปัว จังหวัดน่าน`;
+
+  const description =
+    `${room.description} ` +
+    `ที่พักส่วนตัวท่ามกลางธรรมชาติ วิวภูเขา ใกล้ถนนเลข 3 ` +
+    `เดินทางต่อไปบ่อเกลือ จังหวัดน่านได้สะดวก`;
+
   return {
-    title: `${room.title} | ที่พักปัว น่าน | Laklai View`,
-    description: `${room.description} Laklai View ที่พักท่ามกลางธรรมชาติในอำเภอปัว จังหวัดน่าน พร้อมบรรยากาศเงียบสงบและวิวภูเขา`,
+    title,
+    description,
+
     keywords: [
-      "ที่พักปัว",
-      "ที่พักปัว น่าน",
-      "ที่พักน่าน",
-      "บ้านพักปัว",
-      "ที่พักวิวภูเขา",
-      "ที่พักธรรมชาติ น่าน",
+      room.title,
       "Laklai View",
+      "หลักลาย View",
+      "ที่พักปัว",
+      "ที่พักจังหวัดน่าน",
+      "ที่พักบ่อเกลือ",
+      "ที่พักใกล้ถนนเลข 3",
+      "บ้านพักวิวภูเขา",
+      "ที่พักธรรมชาติ",
     ],
+
     alternates: {
-      canonical: `${BASE_URL}/rooms/${room.id}`,
+      canonical: `https://laklaiview.com/rooms/${room.id}`,
     },
+
     openGraph: {
-      title: `${room.title} | Laklai View`,
-      description: room.description,
-      url: `${BASE_URL}/rooms/${room.id}`,
+      title,
+      description,
+      url: `https://laklaiview.com/rooms/${room.id}`,
       siteName: "Laklai View",
+      locale: "th_TH",
       type: "website",
-      images: room.images[0]
+      images: room.images?.[0]
         ? [
             {
               url: room.images[0],
@@ -56,7 +68,19 @@ export async function generateMetadata({
               alt: room.title,
             },
           ]
-        : [],
+        : undefined,
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: room.images?.[0] ? [room.images[0]] : undefined,
+    },
+
+    robots: {
+      index: true,
+      follow: true,
     },
   };
 }
