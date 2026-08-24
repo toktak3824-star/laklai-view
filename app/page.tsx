@@ -2,12 +2,41 @@ import GallerySection from "@/components/GallerySection";
 import Hero from "@/components/Hero";
 import Rooms from "@/components/Rooms";
 
+const lodgingSchema = {
+  "@context": "https://schema.org",
+  "@type": "LodgingBusiness",
+  name: "Laklai View",
+  alternateName: "หลักลาย View",
+  description:
+    "ที่พักท่ามกลางธรรมชาติในอำเภอปัว จังหวัดน่าน บ้านพักส่วนตัว วิวภูเขา บรรยากาศเงียบสงบ พร้อมพื้นที่พักผ่อนและสระน้ำแร่จากธรรมชาติ",
+  url: "https://laklaiview.com",
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "ปัว",
+    addressRegion: "น่าน",
+    addressCountry: "TH",
+  },
+  areaServed: {
+    "@type": "Place",
+    name: "ปัว จังหวัดน่าน",
+  },
+};
+
 export default function Home() {
   return (
-    <main>
-      <Hero />
-      <GallerySection />
-      <Rooms />
-    </main>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(lodgingSchema),
+        }}
+      />
+
+      <main>
+        <Hero />
+        <GallerySection />
+        <Rooms />
+      </main>
+    </>
   );
 }
