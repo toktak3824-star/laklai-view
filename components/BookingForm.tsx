@@ -12,6 +12,8 @@ type Props = {
 };
 
 export default function BookingForm({ room }: Props) {
+  const isHouse4 = room.id === "house4";
+
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
 
@@ -50,6 +52,232 @@ export default function BookingForm({ room }: Props) {
 
   const totalPrice = bookingResult?.grandTotal ?? 0;
 
+    const olderChildren = childAges.filter(
+    (age) => age >= 9 && age <= 13
+  ).length;
+
+  const adultChildren = childAges.filter(
+    (age) => age >= 14
+  ).length;
+
+  const effectiveAdults =
+    adults + adultChildren;
+
+  const mainGuests =
+    effectiveAdults + olderChildren;
+
+  /*
+   * =========================================
+   * ราคาปกติสำหรับแสดงเป็นราคาขีดฆ่า
+   * =========================================
+   *
+   * ใช้ "ราคาเต็มก่อนโปรโมชั่น" สำหรับแสดง
+   * ในบรรทัด ราคาปกติ เท่านั้น
+   *
+   * ไม่เปลี่ยนยอดที่ลูกค้าต้องจ่ายจริง
+   *
+   * 1 คน:
+   * ใช้ราคาเต็มของบ้าน
+   *
+   * ผู้ใหญ่เกิน 2 คน:
+   * +500 บาท / คน
+   *
+   * เด็ก 9-13 ปี:
+   * +350 บาท / คน
+   *
+   * เด็ก 0-8 ปี:
+   * ฟรี
+   */
+
+  const normalExtraAdults = Math.max(
+    0,
+    effectiveAdults - room.defaultGuests
+  );
+
+  const normalExtraAdultPerNight =
+    normalExtraAdults * room.extraAdultPrice;
+
+  const normalExtraChildPerNight =
+    olderChildren * room.extraChildBedPrice;
+
+  const normalPriceTotal = bookingResult
+    ? bookingResult.breakdown.reduce(
+        (total, night) => {
+          const baseNormalPrice =
+            night.type === "holiday"
+              ? (
+                  room.pricing.originalHoliday ??
+                  room.pricing.holiday + 400
+                )
+              : (
+                  room.pricing.originalWeekday ??
+                  room.pricing.weekday + 400
+                );
+
+          return (
+            total +
+            baseNormalPrice +
+            normalExtraAdultPerNight +
+            normalExtraChildPerNight
+          );
+        },
+        0
+      )
+    : 0;
+
+  /*
+   * บ้าน 4:
+   * เมื่อคนหลักครบ 4 คน
+   * อนุญาตเด็ก 0-8 ปีเพิ่มได้ 1 คน
+   */
+
+  const house4MainGuestsFull =
+    isHouse4 && mainGuests >= 4;
+
+  /*
+   * =========================================
+   * จำนวนผู้ใหญ่ที่เลือกได้
+   *
+   * บ้าน 1-3 = สูงสุด 3 คน
+   * บ้าน 4 = สูงสุด 4 คน
+   * =========================================
+   */
+
+  const maxAdultOption = isHouse4 ? 4 : 3;
+
+  /*
+   * =========================================
+   * จำนวนเด็กที่เลือกได้
+   *
+   * บ้าน 4:
+   * ถ้าคนหลักครบ 4 แล้ว
+   * เพิ่มเด็กเล็กได้สูงสุด 1 คน
+   *
+   * ถ้ายังไม่ครบ 4 คน
+   * ใช้กฎเดิมของบ้าน
+   * =========================================
+   */
+
+  const maxChildren =
+    isHouse4
+      ? house4MainGuestsFull
+        ? 1
+        : Math.min(2, 4 - mainGuests)
+      : adults === 3
+        ? 1
+        : 2;
+
+  /*
+   * ถ้ากติกาใหม่ทำให้จำนวนเด็กที่เลือกอยู่เกิน
+   * ให้ไม่ปล่อยให้ state ค้างเกินจำนวนที่อนุญาต
+   */
+
+  const handleAdultChange = (
+    newAdults: number
+  ) => {
+    setAdults(newAdults);
+
+    /*
+     * บ้าน 4:
+     * ถ้าเลือกผู้ใหญ่ 4 คน
+     * เด็กที่มีอยู่ต้องเป็นเด็กเล็กเท่านั้น
+     * และมีได้สูงสุด 1 คน
+     */
+
+    if (isHouse4 && newAdults >= 4) {
+      setChildren((current) =>
+        Math.min(current, 1)
+      );
+
+      setChildAges((current) =>
+        current
+          .slice(0, 1)
+          .map((age) =>
+            age > 8 ? 8 : age
+          )
+      );
+
+      return;
+    }
+
+    /*
+     * บ้าน 1-3:
+     * กฎเดิมเมื่อผู้ใหญ่ 3 คน
+     * เด็กต้องไม่เกิน 8 ปี
+     */
+
+    if (!isHouse4 && newAdults === 3) {
+      setChildAges((current) =>
+        current.map((age) =>
+          age > 8 ? 8 : age
+        )
+      );
+
+      setChildren((current) =>
+        Math.min(current, 1)
+      );
+    }
+  };
+
+  const handleChildrenChange = (
+    count: number
+  ) => {
+    const safeCount = Math.min(
+      count,
+      maxChildren
+    );
+
+    setChildren(safeCount);
+
+    setChildAges((current) => {
+      const next = [...current];
+
+      while (next.length < safeCount) {
+        next.push(8);
+      }
+
+      return next.slice(0, safeCount);
+    });
+  };
+
+  const handleChildAgeChange = (
+    index: number,
+    age: number
+  ) => {
+    /*
+     * บ้าน 4 เมื่อคนหลักครบ 4:
+     * เด็กที่เพิ่มได้ต้อง <= 8 ปีเท่านั้น
+     */
+
+    if (
+      isHouse4 &&
+      house4MainGuestsFull &&
+      age > 8
+    ) {
+      return;
+    }
+
+    /*
+     * บ้าน 1-3:
+     * ผู้ใหญ่ 3 คน + เด็ก
+     * เด็กต้องไม่เกิน 8 ปี
+     */
+
+    if (
+      !isHouse4 &&
+      adults === 3 &&
+      age > 8
+    ) {
+      return;
+    }
+
+    setChildAges((current) => {
+      const next = [...current];
+      next[index] = age;
+      return next;
+    });
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
@@ -84,7 +312,11 @@ export default function BookingForm({ room }: Props) {
         return;
       }
 
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      if (
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+          email.trim()
+        )
+      ) {
         alert("กรุณากรอกอีเมลให้ถูกต้อง");
         setIsSubmitting(false);
         return;
@@ -97,156 +329,202 @@ export default function BookingForm({ room }: Props) {
       }
 
       // =========================================
-      // 2. ตรวจสอบจำนวนและอายุผู้เข้าพัก
+      // 2. ตรวจจำนวนและอายุผู้เข้าพัก
       // =========================================
 
-      // เด็กอายุ 14 ปีขึ้นไป = ผู้ใหญ่
       const adultChildren = childAges.filter(
         (age) => age >= 14
       ).length;
 
-      // เด็กอายุ 9-13 ปี = เด็กโต
       const olderChildren = childAges.filter(
         (age) => age >= 9 && age <= 13
       ).length;
 
-      // เด็กอายุ 0-8 ปี = เด็กเล็ก
       const youngChildren = childAges.filter(
         (age) => age >= 0 && age <= 8
       ).length;
 
-      // =========================================
-      // กฎที่ 1
-      // ผู้ใหญ่ 3 คน + เด็กโต = ห้าม
-      // =========================================
-
-      if (adults === 3 && olderChildren > 0) {
-        alert(
-          "ไม่สามารถจองได้\n\n" +
-            "ผู้ใหญ่ 3 คนสามารถเข้าพักพร้อมเด็กอายุไม่เกิน 8 ปีได้เท่านั้น\n\n" +
-            "เนื่องจากที่พักมีที่นอนเสริม 3 ฟุตเพียง 1 ที่ " +
-            "ซึ่งใช้สำหรับผู้ใหญ่คนที่ 3 แล้ว\n\n" +
-            "กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง"
-        );
-
-        setIsSubmitting(false);
-        return;
-      }
-
-      // =========================================
-      // กฎที่ 2
-      // ผู้ใหญ่ 2 + เด็กโต 2 คน = ห้าม
-      // =========================================
-
-      if (adults === 2 && olderChildren >= 2) {
-        alert(
-          "ไม่สามารถจองได้\n\n" +
-            "เด็กอายุ 9-13 ปี จำนวน 2 คน " +
-            "ไม่สามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนในบ้านหลังเดียวได้\n\n" +
-            "กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง"
-        );
-
-        setIsSubmitting(false);
-        return;
-      }
-
-      // =========================================
-      // กฎที่ 3
-      // ผู้ใหญ่ 4 คน = ห้าม
-      // =========================================
-
-      if (adults >= 4) {
-        alert(
-          "บ้านพักรองรับผู้ใหญ่สูงสุด 3 คนเท่านั้น\n\n" +
-            "เนื่องจากมีที่นอนเสริม 3 ฟุตเพียง 1 ที่\n\n" +
-            "กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง"
-        );
-
-        setIsSubmitting(false);
-        return;
-      }
-
-      // =========================================
-      // กฎที่ 4
-      // เด็ก 14 ปีขึ้นไปถือเป็นผู้ใหญ่
-      // =========================================
-
       const effectiveAdults =
         adults + adultChildren;
 
-      if (effectiveAdults > 3) {
-        alert(
-          "ไม่สามารถจองบ้านพักหลังเดียวได้\n\n" +
-            "เด็กอายุ 14 ปีขึ้นไปจะคิดเป็นผู้ใหญ่\n\n" +
-            "จำนวนผู้ใหญ่ที่ต้องรองรับเกินความจุของบ้านพัก\n\n" +
-            "กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง"
-        );
+      /*
+       * =========================================
+       * บ้าน 4 — กฎพิเศษ
+       * =========================================
+       */
 
-        setIsSubmitting(false);
-        return;
+      if (isHouse4) {
+        /*
+         * ผู้ใหญ่ + เด็ก 14+ สูงสุด 4 คน
+         */
+
+        if (effectiveAdults > 4) {
+          alert(
+            "บ้านสุขใจรองรับผู้ใหญ่รวมสูงสุด 4 คน"
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        /*
+         * คนหลัก = ผู้ใหญ่ + เด็ก 9-13
+         */
+
+        const mainGuests =
+          effectiveAdults + olderChildren;
+
+        /*
+         * คนหลักต้องไม่เกิน 4
+         */
+
+        if (mainGuests > 4) {
+          alert(
+            "บ้านสุขใจรองรับผู้ใหญ่และเด็กอายุ 9 ปีขึ้นไป รวมสูงสุด 4 คน"
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        /*
+         * เมื่อครบ 4 คนหลักแล้ว
+         * เด็ก 0-8 เพิ่มได้ 1 คนฟรี
+         */
+
+        if (
+          mainGuests === 4 &&
+          youngChildren > 1
+        ) {
+          alert(
+            "เมื่อผู้ใหญ่และเด็กโตครบ 4 คนแล้ว สามารถเพิ่มเด็กอายุไม่เกิน 8 ปีได้อีก 1 คนฟรี"
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        /*
+         * รวมจำนวนจริงต้องไม่เกิน 5
+         */
+
+        const totalHouse4Guests =
+          adults + childAges.length;
+
+        if (totalHouse4Guests > 5) {
+          alert(
+            "บ้านสุขใจรองรับผู้เข้าพักสูงสุด 5 คน โดยคนที่ 5 ต้องเป็นเด็กอายุไม่เกิน 8 ปี"
+          );
+          setIsSubmitting(false);
+          return;
+        }
       }
 
-      // =========================================
-      // กฎที่ 5
-      // ผู้ใหญ่ 3 คน + เด็กเล็กได้สูงสุด 1 คน
-      // =========================================
+      /*
+       * =========================================
+       * บ้าน 1-3 — กฎเดิม
+       * =========================================
+       */
 
-      if (
-        adults === 3 &&
-        youngChildren > 1
-      ) {
-        alert(
-          "ไม่สามารถจองได้\n\n" +
-            "เมื่อมีผู้ใหญ่ 3 คน สามารถเข้าพักพร้อมเด็กอายุไม่เกิน 8 ปีได้เพียง 1 คนเท่านั้น\n\n" +
-            "เนื่องจากที่นอนเสริม 3 ฟุตถูกใช้สำหรับผู้ใหญ่คนที่ 3 แล้ว\n\n" +
-            "กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง"
-        );
+      if (!isHouse4) {
+        if (
+          adults === 3 &&
+          olderChildren > 0
+        ) {
+          alert(
+            "ไม่สามารถจองได้\n\n" +
+              "ผู้ใหญ่ 3 คนสามารถเข้าพักพร้อมเด็กอายุไม่เกิน 8 ปีได้เท่านั้น\n\n" +
+              "เนื่องจากที่พักมีที่นอนเสริม 3 ฟุตเพียง 1 ที่ ซึ่งใช้สำหรับผู้ใหญ่คนที่ 3 แล้ว\n\n" +
+              "กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง"
+          );
 
-        setIsSubmitting(false);
-        return;
-      }
+          setIsSubmitting(false);
+          return;
+        }
 
-      // =========================================
-      // กฎที่ 6
-      // จำนวนผู้เข้าพักทั้งหมดต้องไม่เกิน 4 คน
-      // =========================================
+        if (
+          adults === 2 &&
+          olderChildren >= 2
+        ) {
+          alert(
+            "ไม่สามารถจองได้\n\n" +
+              "เด็กอายุ 9-13 ปี จำนวน 2 คน ไม่สามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนในบ้านหลังเดียวได้\n\n" +
+              "กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง"
+          );
 
-      const totalGuests =
-        adults + childAges.length;
+          setIsSubmitting(false);
+          return;
+        }
 
-      if (totalGuests > 4) {
-        alert(
-          "ไม่สามารถจองบ้านพักหลังเดียวได้\n\n" +
-            "จำนวนผู้เข้าพักเกิน 4 คน\n\n" +
-            "กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง"
-        );
+        if (adults >= 4) {
+          alert(
+            "บ้านพักนี้รองรับผู้ใหญ่สูงสุด 3 คนเท่านั้น\n\n" +
+              "กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง"
+          );
 
-        setIsSubmitting(false);
-        return;
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (effectiveAdults > 3) {
+          alert(
+            "ไม่สามารถจองบ้านพักหลังเดียวได้\n\n" +
+              "เด็กอายุ 14 ปีขึ้นไปจะคิดเป็นผู้ใหญ่\n\n" +
+              "จำนวนผู้ใหญ่ที่ต้องรองรับเกินความจุของบ้านพัก"
+          );
+
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (
+          adults === 3 &&
+          youngChildren > 1
+        ) {
+          alert(
+            "เมื่อมีผู้ใหญ่ 3 คน สามารถเข้าพักพร้อมเด็กอายุไม่เกิน 8 ปีได้เพียง 1 คนเท่านั้น"
+          );
+
+          setIsSubmitting(false);
+          return;
+        }
+
+        const totalGuests =
+          adults + childAges.length;
+
+        if (totalGuests > 4) {
+          alert(
+            "จำนวนผู้เข้าพักเกินความจุของบ้านพัก"
+          );
+
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       // =========================================
       // 3. ตรวจสอบวันว่างกับฐานข้อมูล
       // =========================================
 
-      console.log("กำลังตรวจสอบวันว่าง...");
-
-      const availabilityResponse = await fetch(
-        "/api/bookings/check-availability",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            roomId: room.id,
-            checkIn,
-            checkOut,
-            adults,
-            childAges,
-          }),
-        }
+      console.log(
+        "กำลังตรวจสอบวันว่าง..."
       );
+
+      const availabilityResponse =
+        await fetch(
+          "/api/bookings/check-availability",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              roomId: room.id,
+              checkIn,
+              checkOut,
+              adults,
+              childAges,
+            }),
+          }
+        );
 
       const availabilityResult =
         await availabilityResponse.json();
@@ -255,10 +533,6 @@ export default function BookingForm({ room }: Props) {
         "AVAILABILITY RESPONSE =",
         availabilityResult
       );
-
-      // =========================================
-      // 4. ถ้าวันไม่ว่าง
-      // =========================================
 
       if (
         !availabilityResponse.ok ||
@@ -299,7 +573,7 @@ export default function BookingForm({ room }: Props) {
       }
 
       // =========================================
-      // 5. สร้าง Booking Code
+      // 4. สร้าง Booking Code
       // =========================================
 
       const now = new Date();
@@ -310,37 +584,40 @@ export default function BookingForm({ room }: Props) {
           .getFullYear()
           .toString()
           .slice(-2) +
-        String(now.getMonth() + 1).padStart(
-          2,
-          "0"
-        ) +
-        String(now.getDate()).padStart(
-          2,
-          "0"
-        ) +
+        String(
+          now.getMonth() + 1
+        ).padStart(2, "0") +
+        String(
+          now.getDate()
+        ).padStart(2, "0") +
         "-" +
-        Date.now().toString().slice(-4);
+        Date.now()
+          .toString()
+          .slice(-4);
 
       // =========================================
-      // 6. สร้าง Booking
+      // 5. สร้าง Booking
       // =========================================
 
-      const booking = await createBooking({
-        room_id: room.id,
-        guest_name: guestName.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        check_in: checkIn,
-        check_out: checkOut,
-        adults,
-        children,
-        child_ages: childAges,
-        total_price: totalPrice,
-        booking_status: "pending",
-        payment_status: "waiting",
-        slip_url: "",
-        booking_code: bookingCode,
-      });
+      const booking =
+        await createBooking({
+          room_id: room.id,
+          guest_name:
+            guestName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          check_in: checkIn,
+          check_out: checkOut,
+          adults,
+          children,
+          child_ages: childAges,
+          total_price: totalPrice,
+          booking_status: "pending",
+          payment_status: "waiting",
+          slip_url: "",
+          booking_code:
+            bookingCode,
+        });
 
       console.log(
         "บันทึกการจองสำเร็จ =",
@@ -348,32 +625,37 @@ export default function BookingForm({ room }: Props) {
       );
 
       // =========================================
-      // 7. ส่ง Email แจ้งรับคำขอจอง
+      // 6. ส่ง Email
       // =========================================
 
       const customerEmail =
         email.trim();
 
       const emailResponse =
-        await fetch("/api/send-email", {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            email: customerEmail,
-            customerEmail,
-            guestName,
-            roomName: room.title,
-            checkIn,
-            checkOut,
-            totalPrice,
-            bookingCode,
-            adults,
-            childAges,
-          }),
-        });
+        await fetch(
+          "/api/send-email",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              email:
+                customerEmail,
+              customerEmail,
+              guestName,
+              roomName:
+                room.title,
+              checkIn,
+              checkOut,
+              totalPrice,
+              bookingCode,
+              adults,
+              childAges,
+            }),
+          }
+        );
 
       const emailResult =
         await emailResponse.json();
@@ -391,7 +673,7 @@ export default function BookingForm({ room }: Props) {
       }
 
       // =========================================
-      // 8. ไปหน้าชำระเงิน
+      // 7. ไปหน้าชำระเงิน
       // =========================================
 
       window.location.href =
@@ -473,11 +755,14 @@ export default function BookingForm({ room }: Props) {
                 type="date"
                 value={checkIn}
                 onChange={(e) => {
-                  setCheckIn(e.target.value);
+                  setCheckIn(
+                    e.target.value
+                  );
 
                   if (
                     checkOut &&
-                    e.target.value >= checkOut
+                    e.target.value >=
+                      checkOut
                   ) {
                     setCheckOut("");
                   }
@@ -498,9 +783,13 @@ export default function BookingForm({ room }: Props) {
                 id="check-out"
                 type="date"
                 value={checkOut}
-                min={checkIn || undefined}
+                min={
+                  checkIn || undefined
+                }
                 onChange={(e) =>
-                  setCheckOut(e.target.value)
+                  setCheckOut(
+                    e.target.value
+                  )
                 }
                 className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-base text-black outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
               />
@@ -516,6 +805,7 @@ export default function BookingForm({ room }: Props) {
 
             <div className="grid gap-4 sm:grid-cols-2">
 
+              {/* Adults */}
               <div>
                 <label
                   htmlFor="adults"
@@ -527,37 +817,38 @@ export default function BookingForm({ room }: Props) {
                 <select
                   id="adults"
                   value={adults}
-                  onChange={(e) => {
-                    const newAdults =
-                      Number(e.target.value);
-
-                    setAdults(newAdults);
-
-                    if (newAdults === 3) {
-                      setChildAges(
-                        (current) =>
-                          current.map((age) =>
-                            age > 8 ? 8 : age
-                          )
-                      );
-                    }
-                  }}
+                  onChange={(e) =>
+                    handleAdultChange(
+                      Number(
+                        e.target.value
+                      )
+                    )
+                  }
                   className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-base text-black outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
                 >
-                  <option value={1}>
-                    1 คน
-                  </option>
+                  {Array.from(
+                    {
+                      length:
+                        maxAdultOption,
+                    },
+                    (_, index) => {
+                      const n =
+                        index + 1;
 
-                  <option value={2}>
-                    2 คน
-                  </option>
-
-                  <option value={3}>
-                    3 คน
-                  </option>
+                      return (
+                        <option
+                          key={n}
+                          value={n}
+                        >
+                          {n} คน
+                        </option>
+                      );
+                    }
+                  )}
                 </select>
               </div>
 
+              {/* Children */}
               <div>
                 <label
                   htmlFor="children"
@@ -569,48 +860,29 @@ export default function BookingForm({ room }: Props) {
                 <select
                   id="children"
                   value={children}
-                  onChange={(e) => {
-                    const count =
-                      Number(e.target.value);
-
-                    setChildren(count);
-
-                    setChildAges((current) => {
-                      const next = [...current];
-
-                      while (
-                        next.length < count
-                      ) {
-                        next.push(8);
-                      }
-
-                      return next.slice(
-                        0,
-                        count
-                      );
-                    });
-                  }}
+                  onChange={(e) =>
+                    handleChildrenChange(
+                      Number(
+                        e.target.value
+                      )
+                    )
+                  }
                   className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-base text-black outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
                 >
-                  {[0, 1, 2].map((n) => {
-                    const maxChildren =
-                      adults === 3 ? 1 : 2;
-
-                    if (
-                      n > maxChildren
-                    ) {
-                      return null;
-                    }
-
-                    return (
+                  {Array.from(
+                    {
+                      length:
+                        maxChildren + 1,
+                    },
+                    (_, n) => (
                       <option
                         key={n}
                         value={n}
                       >
                         {n} คน
                       </option>
-                    );
-                  })}
+                    )
+                  )}
                 </select>
               </div>
 
@@ -619,14 +891,17 @@ export default function BookingForm({ room }: Props) {
             {/* Child ages */}
             {children > 0 && (
               <div className="mt-4 rounded-2xl bg-stone-50 p-4">
+
                 <p className="mb-3 text-sm font-bold text-stone-700">
                   อายุเด็ก
                 </p>
 
                 <div className="grid gap-3 sm:grid-cols-2">
+
                   {childAges.map(
                     (age, index) => (
                       <div key={index}>
+
                         <label className="mb-2 block text-sm text-stone-600">
                           เด็กคนที่{" "}
                           {index + 1}
@@ -634,41 +909,70 @@ export default function BookingForm({ room }: Props) {
 
                         <select
                           value={age}
-                          onChange={(e) => {
-                            const newAges =
-                              [...childAges];
-
-                            newAges[index] =
+                          onChange={(e) =>
+                            handleChildAgeChange(
+                              index,
                               Number(
                                 e.target.value
-                              );
-
-                            setChildAges(
-                              newAges
-                            );
-                          }}
+                              )
+                            )
+                          }
                           className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-base text-black"
                         >
                           {Array.from(
                             {
                               length: 18,
                             },
-                            (_, age) => (
-                              <option
-                                key={age}
-                                value={age}
-                              >
-                                {age} ปี
-                              </option>
-                            )
+                            (_, ageOption) => {
+
+                              /*
+                               * บ้าน 4 เมื่อคนหลักครบ 4:
+                               * ให้เลือกได้เฉพาะ 0-8 ปี
+                               */
+
+                              if (
+                                isHouse4 &&
+                                house4MainGuestsFull &&
+                                ageOption > 8
+                              ) {
+                                return null;
+                              }
+
+                              /*
+                               * บ้าน 1-3 เมื่อผู้ใหญ่ 3:
+                               * เด็กต้อง <= 8 ปี
+                               */
+
+                              if (
+                                !isHouse4 &&
+                                adults === 3 &&
+                                ageOption > 8
+                              ) {
+                                return null;
+                              }
+
+                              return (
+                                <option
+                                  key={ageOption}
+                                  value={
+                                    ageOption
+                                  }
+                                >
+                                  {ageOption} ปี
+                                </option>
+                              );
+                            }
                           )}
                         </select>
+
                       </div>
                     )
                   )}
+
                 </div>
               </div>
             )}
+
           </div>
 
           {/* Guest information */}
@@ -770,7 +1074,9 @@ export default function BookingForm({ room }: Props) {
                 </span>
 
                 <span className="font-semibold text-stone-800">
-                  {bookingResult?.nights ?? 0} คืน
+                  {bookingResult?.nights ??
+                    0}{" "}
+                  คืน
                 </span>
               </div>
 
@@ -780,10 +1086,8 @@ export default function BookingForm({ room }: Props) {
                 </span>
 
                 <span className="line-through text-stone-400">
-                  ฿
-                  {bookingResult?.roomTotal?.toLocaleString() ??
-                    "0"}
-                </span>
+  ฿{normalPriceTotal.toLocaleString()}
+</span>
               </div>
 
               <div className="flex items-center justify-between gap-4 border-t border-green-200 pt-4">
