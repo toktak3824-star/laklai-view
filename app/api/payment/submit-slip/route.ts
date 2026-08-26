@@ -1,167 +1,337 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { isAdminAuthenticated } from "@/lib/adminAuth";
+
+export const runtime = "nodejs";
+
+const BUCKET = "payment-slips";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const formData = await req.formData();
 
-    console.log("========== SUBMIT SLIP ==========");
-    console.log("BODY =", body);
+    const bookingCode = String(
+      formData.get("bookingCode") || ""
+    ).trim();
 
-    const {
-      bookingCode,
-      slipUrl,
-    } = body;
-
-    console.log("bookingCode =", bookingCode);
-    console.log("slipUrl =", slipUrl);
+    const file = formData.get("slip");
 
     if (!bookingCode) {
-      console.error("ERROR: ไม่มี bookingCode");
-
       return NextResponse.json(
-        {
-          error: "ไม่พบเลขที่การจอง",
-          missing: "bookingCode",
-        },
-        {
-          status: 400,
-        }
+        { error: "ไม่พบเลขการจอง" },
+        { status: 400 }
       );
     }
 
-    if (!slipUrl) {
-      console.error("ERROR: ไม่มี slipUrl");
-
+    if (!(file instanceof File)) {
       return NextResponse.json(
-        {
-          error: "ไม่พบ URL ของสลิป",
-          missing: "slipUrl",
-        },
-        {
-          status: 400,
-        }
+        { error: "กรุณาแนบไฟล์สลิป" },
+        { status: 400 }
       );
     }
 
-    console.log("กำลังค้นหา Booking:", bookingCode);
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
 
-    const {
-      data: booking,
-      error: findError,
-    } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("booking_code", bookingCode)
-      .single();
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        {
+          error:
+            "รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP",
+        },
+        { status: 400 }
+      );
+    }
 
-    if (findError) {
+    if (
+      file.size <= 0 ||
+      file.size > 10 * 1024 * 1024
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "ไฟล์สลิปต้องมีขนาดไม่เกิน 10 MB",
+        },
+        { status: 400 }
+      );
+    }
+
+    // =========================================
+    // ค้นหา Booking
+    // =========================================
+
+    const { data: booking, error: bookingError } =
+      await supabaseAdmin
+        .from("bookings")
+        .select(
+          "id, booking_code, payment_status, slip_url"
+        )
+        .eq("booking_code", bookingCode)
+        .single();
+
+    if (bookingError || !booking) {
       console.error(
-        "BOOKING SEARCH ERROR =",
-        findError
+        "BOOKING NOT FOUND =",
+        bookingError
+      );
+
+      return NextResponse.json(
+        {
+          error: "ไม่พบข้อมูลการจองนี้",
+        },
+        { status: 404 }
       );
     }
 
-    if (!booking) {
+    // =========================================
+    // ถ้าชำระเงินแล้ว ไม่รับสลิปใหม่
+    // =========================================
+
+    if (booking.payment_status === "paid") {
+      return NextResponse.json(
+        {
+          error:
+            "การจองนี้ได้รับการยืนยันการชำระเงินแล้ว",
+        },
+        { status: 409 }
+      );
+    }
+
+    // =========================================
+    // นามสกุลไฟล์
+    // =========================================
+
+    const extension =
+      file.type === "image/png"
+        ? "png"
+        : file.type === "image/webp"
+        ? "webp"
+        : "jpg";
+
+    // =========================================
+    // Path ใน Private Storage
+    // =========================================
+
+    const filePath =
+      `bookings/${bookingCode}/` +
+      `${bookingCode}-${Date.now()}.${extension}`;
+
+    const buffer = Buffer.from(
+      await file.arrayBuffer()
+    );
+
+    // =========================================
+    // Upload ไปยัง Private Bucket
+    // =========================================
+
+    const { error: uploadError } =
+      await supabaseAdmin.storage
+        .from(BUCKET)
+        .upload(
+          filePath,
+          buffer,
+          {
+            contentType: file.type,
+            cacheControl: "31536000",
+            upsert: false,
+          }
+        );
+
+    if (uploadError) {
       console.error(
-        "ไม่พบ Booking:",
-        bookingCode
+        "BOOKING SLIP UPLOAD ERROR =",
+        uploadError
       );
 
       return NextResponse.json(
         {
-          error: "ไม่พบรายการจอง",
+          error:
+            "อัปโหลดสลิปไม่สำเร็จ",
+          detail: uploadError.message,
         },
-        {
-          status: 404,
-        }
+        { status: 500 }
       );
     }
 
-    console.log(
-      "พบ Booking:",
-      booking.booking_code
-    );
+    // =========================================
+    // บันทึก PATH ลง Database
+    // =========================================
 
-    console.log(
-      "สถานะเดิม:",
-      booking.booking_status,
-      booking.payment_status
-    );
-
-    if (booking.booking_status === "cancelled") {
-      return NextResponse.json(
-        {
-          error: "รายการจองนี้ถูกยกเลิกแล้ว",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (booking.booking_status === "confirmed") {
-      return NextResponse.json(
-        {
-          error: "รายการจองนี้ได้รับการยืนยันแล้ว",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    console.log(
-      "กำลังบันทึก Slip URL ลงฐานข้อมูล..."
-    );
-
-    const {
-      error: updateError,
-    } = await supabase
-      .from("bookings")
-      .update({
-        slip_url: slipUrl,
-        payment_status: "waiting",
-        booking_status: "pending",
-      })
-      .eq("id", booking.id);
+    const { error: updateError } =
+      await supabaseAdmin
+        .from("bookings")
+        .update({
+          slip_url: filePath,
+          payment_status:
+            "waiting_verification",
+        })
+        .eq("id", booking.id);
 
     if (updateError) {
       console.error(
-        "DATABASE UPDATE ERROR =",
+        "BOOKING SLIP DB UPDATE ERROR =",
         updateError
       );
 
-      throw updateError;
+      // ถ้า DB บันทึกไม่ได้ ลบไฟล์ทิ้ง
+      await supabaseAdmin.storage
+        .from(BUCKET)
+        .remove([filePath]);
+
+      return NextResponse.json(
+        {
+          error:
+            "บันทึกข้อมูลสลิปไม่สำเร็จ",
+          detail: updateError.message,
+        },
+        { status: 500 }
+      );
     }
 
     console.log(
-      "บันทึกสลิปสำเร็จ:",
-      bookingCode
-    );
-
-    console.log(
-      "================================"
+      "BOOKING SLIP UPLOADED =",
+      bookingCode,
+      filePath
     );
 
     return NextResponse.json({
       success: true,
-      bookingCode: booking.booking_code,
+      bookingCode,
+      paymentStatus:
+        "waiting_verification",
     });
-
   } catch (error) {
     console.error(
-      "SUBMIT SLIP ERROR =",
+      "BOOKING SLIP POST ERROR =",
       error
     );
 
     return NextResponse.json(
       {
-        error: "ไม่สามารถส่งสลิปได้",
+        error:
+          error instanceof Error
+            ? error.message
+            : "เกิดข้อผิดพลาดในการส่งสลิป",
       },
+      { status: 500 }
+    );
+  }
+}
+
+
+// =====================================================
+// GET — เปิดดูสลิปสำหรับ ADMIN เท่านั้น
+// =====================================================
+
+export async function GET(req: Request) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json(
       {
-        status: 500,
-      }
+        error: "ไม่มีสิทธิ์เข้าถึง",
+      },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const { searchParams } =
+      new URL(req.url);
+
+    const bookingCode = String(
+      searchParams.get("bookingCode") || ""
+    ).trim();
+
+    if (!bookingCode) {
+      return NextResponse.json(
+        {
+          error: "ไม่พบเลขการจอง",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { data: booking, error } =
+      await supabaseAdmin
+        .from("bookings")
+        .select(
+          "id, booking_code, slip_url"
+        )
+        .eq("booking_code", bookingCode)
+        .single();
+
+    if (error || !booking) {
+      return NextResponse.json(
+        {
+          error: "ไม่พบข้อมูลการจอง",
+        },
+        { status: 404 }
+      );
+    }
+
+    if (!booking.slip_url) {
+      return NextResponse.json(
+        {
+          error:
+            "การจองนี้ยังไม่มีสลิป",
+        },
+        { status: 404 }
+      );
+    }
+
+    const slipPath = String(
+      booking.slip_url
+    ).trim();
+
+    const { data, error: signedError } =
+      await supabaseAdmin.storage
+        .from(BUCKET)
+        .createSignedUrl(
+          slipPath,
+          60 * 10
+        );
+
+    if (
+      signedError ||
+      !data?.signedUrl
+    ) {
+      console.error(
+        "CREATE SIGNED URL ERROR =",
+        signedError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "ไม่สามารถเปิดสลิปได้",
+          detail:
+            signedError?.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      url: data.signedUrl,
+      bookingCode,
+    });
+  } catch (error) {
+    console.error(
+      "BOOKING SLIP GET ERROR =",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "เกิดข้อผิดพลาดในการเปิดสลิป",
+      },
+      { status: 500 }
     );
   }
 }

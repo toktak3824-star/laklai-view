@@ -1,21 +1,38 @@
-export async function getBooking(bookingCode: string) {
-  const response = await fetch(
-    `/api/bookings/get?bookingCode=${encodeURIComponent(
-      bookingCode
-    )}`,
-    {
-      method: "GET",
-      cache: "no-store",
-    }
-  );
+import "server-only";
 
-  const result = await response.json();
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-  if (!response.ok) {
+export async function getBooking(
+  bookingCode: string
+) {
+  const code = String(bookingCode ?? "").trim();
+
+  if (!code) {
+    throw new Error("ไม่พบรหัสการจอง");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("bookings")
+    .select("*")
+    .eq("booking_code", code)
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      "GET BOOKING ERROR =",
+      error
+    );
+
     throw new Error(
-      result?.error || "Booking not found"
+      "ไม่สามารถค้นหาข้อมูลการจองได้"
     );
   }
 
-  return result.booking;
+  if (!data) {
+    throw new Error(
+      "ไม่พบข้อมูลการจอง"
+    );
+  }
+
+  return data;
 }
