@@ -2,7 +2,6 @@
 
 import { calculatePrice } from "@/utils/calculatePrice";
 import { useMemo, useState } from "react";
-import { createBooking } from "@/lib/booking";
 import type { Room } from "@/types/room";
 import BookingPolicy from "@/components/BookingPolicy";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
@@ -599,25 +598,38 @@ export default function BookingForm({ room }: Props) {
       // 5. สร้าง Booking
       // =========================================
 
-      const booking =
-        await createBooking({
-          room_id: room.id,
-          guest_name:
-            guestName.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          check_in: checkIn,
-          check_out: checkOut,
-          adults,
-          children,
-          child_ages: childAges,
-          total_price: totalPrice,
-          booking_status: "pending",
-          payment_status: "waiting",
-          slip_url: "",
-          booking_code:
-            bookingCode,
-        });
+      const response = await fetch("/api/bookings/create", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    room_id: room.id,
+    guest_name: guestName.trim(),
+    email: email.trim(),
+    phone: phone.trim(),
+    check_in: checkIn,
+    check_out: checkOut,
+    adults,
+    children,
+    child_ages: childAges,
+    total_price: totalPrice,
+    booking_status: "pending",
+    payment_status: "waiting",
+    slip_url: "",
+    booking_code: bookingCode,
+  }),
+});
+
+const result = await response.json();
+
+if (!response.ok || !result.success) {
+  throw new Error(
+    result.error || "ไม่สามารถสร้างการจองได้"
+  );
+}
+
+const booking = result.booking;
 
       console.log(
         "บันทึกการจองสำเร็จ =",

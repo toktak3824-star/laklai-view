@@ -25,31 +25,51 @@ export async function uploadSlip(file: File) {
       });
 
     if (error) {
-      console.error("SUPABASE STORAGE ERROR:", error);
+      console.error(
+        "SUPABASE STORAGE ERROR:",
+        error
+      );
 
       throw new Error(
         `อัปโหลดสลิปไม่สำเร็จ: ${error.message}`
       );
     }
 
-    console.log("อัปโหลดสำเร็จ:", data);
+    console.log(
+      "อัปโหลดสลิปสำเร็จ:",
+      data
+    );
 
-    const { data: publicUrlData } = supabase.storage
-      .from("payment-slips")
-      .getPublicUrl(fileName);
+    /*
+     * Bucket payment-slips เป็น Private
+     *
+     * ไม่สร้าง Public URL
+     * เก็บเฉพาะ path ของไฟล์
+     *
+     * Admin จะสร้าง Signed URL
+     * ตอนเปิดดูสลิป
+     */
 
-    const publicUrl = publicUrlData.publicUrl;
+    const slipPath = data.path;
 
-    if (!publicUrl) {
-      throw new Error("ไม่สามารถสร้าง URL ของสลิปได้");
+    if (!slipPath) {
+      throw new Error(
+        "ไม่พบ path ของไฟล์สลิป"
+      );
     }
 
-    console.log("Slip URL:", publicUrl);
+    console.log(
+      "Slip Path:",
+      slipPath
+    );
 
-    return publicUrl;
+    return slipPath;
 
   } catch (error) {
-    console.error("UPLOAD SLIP ERROR:", error);
+    console.error(
+      "UPLOAD SLIP ERROR:",
+      error
+    );
 
     throw error;
   }

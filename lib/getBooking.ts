@@ -1,15 +1,21 @@
-import { supabase } from "@/lib/supabase";
-
 export async function getBooking(bookingCode: string) {
-  const { data, error } = await supabase
-    .from("bookings")
-    .select("*")
-    .eq("booking_code", bookingCode)
-    .single();
+  const response = await fetch(
+    `/api/bookings/get?bookingCode=${encodeURIComponent(
+      bookingCode
+    )}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
 
-  if (error) {
-    throw new Error("Booking not found");
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result?.error || "Booking not found"
+    );
   }
 
-  return data;
+  return result.booking;
 }

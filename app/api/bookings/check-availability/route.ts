@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function POST(req: Request) {
   try {
@@ -272,7 +272,7 @@ export async function POST(req: Request) {
     const {
       data: bookings,
       error: bookingError,
-    } = await supabase
+    } = await supabaseAdmin
       .from("bookings")
       .select(
         "id, booking_code, check_in, check_out, booking_status, created_at"
@@ -307,12 +307,11 @@ export async function POST(req: Request) {
       );
 
       return NextResponse.json({
-        available: false,
-        reason: "booked",
-        message:
-          "วันที่ที่เลือกมีการจองแล้ว กรุณาเลือกวันอื่น",
-        bookings,
-      });
+  available: false,
+  reason: "booked",
+  message:
+    "วันที่ที่เลือกมีการจองแล้ว กรุณาเลือกวันอื่น",
+});
     }
 
     // =========================================
@@ -322,7 +321,7 @@ export async function POST(req: Request) {
     const {
       data: blockedDates,
       error: blockedError,
-    } = await supabase
+    } = await supabaseAdmin
       .from("blocked_dates")
       .select(
         "id, room_id, blocked_date, reason"
