@@ -1070,59 +1070,82 @@ const booking = result.booking;
           </div>
 
           {/* Price summary */}
-          <div className="overflow-hidden rounded-2xl border border-green-200 bg-green-50">
+<div className="overflow-hidden rounded-2xl border border-green-200 bg-green-50">
 
-            <div className="border-b border-green-200 px-5 py-4">
-              <h3 className="text-lg font-bold text-green-950">
-                💰 สรุปการจอง
-              </h3>
-            </div>
+  <div className="border-b border-green-200 px-5 py-4">
+    <h3 className="text-lg font-bold text-green-950">
+      💰 สรุปการจอง
+    </h3>
+  </div>
 
-            <div className="space-y-3 px-5 py-5">
+  <div className="space-y-3 px-5 py-5">
 
-              <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
-                <span>
-                  จำนวนคืน
-                </span>
+    <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
+      <span>
+        จำนวนคืน
+      </span>
 
-                <span className="font-semibold text-stone-800">
-                  {bookingResult?.nights ??
-                    0}{" "}
-                  คืน
-                </span>
-              </div>
+      <span className="font-semibold text-stone-800">
+        {bookingResult?.nights ?? 0} คืน
+      </span>
+    </div>
 
-              <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
-                <span>
-                  ราคาปกติ
-                </span>
+    {/* โปรโมชั่นเดือนกันยายน */}
+    {bookingResult &&
+      bookingResult.breakdown.some(
+        (night) =>
+          night.price ===
+          (isHouse4 ? 1499 : 1699)
+      ) && (
+        <div className="rounded-xl border border-green-300 bg-white px-4 py-3">
 
-                <span className="line-through text-stone-400">
-  ฿{normalPriceTotal.toLocaleString()}
-</span>
-              </div>
+          <p className="font-bold text-green-800">
+            🎉 โปรโมชั่นพิเศษเดือนกันยายน 2026
+          </p>
 
-              <div className="flex items-center justify-between gap-4 border-t border-green-200 pt-4">
+          <p className="mt-1 text-sm text-stone-600">
+            {isHouse4
+              ? "บ้านสุขใจ เหลือเพียง 1,499 บาท / คืน"
+              : "ราคาพิเศษ เหลือเพียง 1,699 บาท / คืน"}
+          </p>
 
-                <div>
-                  <p className="text-sm font-medium text-stone-600">
-                    ยอดที่ต้องชำระ
-                  </p>
+          <p className="mt-1 text-sm font-semibold text-green-700">
+            🍈 เก็บเงาะทานฟรีได้เลย
+          </p>
 
-                  <p className="text-xs text-stone-500">
-                    รวมค่าที่พักทั้งหมด
-                  </p>
-                </div>
+        </div>
+      )}
 
-                <p className="text-3xl font-bold text-green-700 sm:text-4xl">
-                  ฿
-                  {totalPrice.toLocaleString()}
-                </p>
+    <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
+      <span>
+        ราคาปกติ
+      </span>
 
-              </div>
+      <span className="line-through text-stone-400">
+        ฿{normalPriceTotal.toLocaleString()}
+      </span>
+    </div>
 
-            </div>
-          </div>
+    <div className="flex items-center justify-between gap-4 border-t border-green-200 pt-4">
+
+      <div>
+        <p className="text-sm font-medium text-stone-600">
+          ยอดที่ต้องชำระ
+        </p>
+
+        <p className="text-xs text-stone-500">
+          รวมค่าที่พักทั้งหมด
+        </p>
+      </div>
+
+      <p className="text-3xl font-bold text-green-700 sm:text-4xl">
+        ฿{totalPrice.toLocaleString()}
+      </p>
+
+    </div>
+
+  </div>
+</div>
 
           {/* Policy */}
           <BookingPolicy />
