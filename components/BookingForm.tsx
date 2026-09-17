@@ -1485,8 +1485,8 @@ natureExperienceTotal:
 
     <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
       <span>
-        ราคาปกติ
-      </span>
+  ราคาปกติต่อ 1 คืน
+</span>
 
       <span className="line-through text-stone-400">
         ฿{normalPriceTotal.toLocaleString()}
@@ -1494,7 +1494,7 @@ natureExperienceTotal:
     </div>
 {natureExperienceSelected &&
   natureExperienceTotal > 0 && (
-    <div className="rounded-xl border border-green-200 bg-white p-4">
+    <div className="mt-6 rounded-xl border-2 border-green-200 bg-white p-4">
 
       <div className="flex items-start justify-between gap-4">
 
