@@ -146,52 +146,14 @@ export default async function RoomDetailPage({ params }: Props) {
         </p>
 
 
-        {/* =========================
-            PRICE
-        ========================== */}
+{/* =========================
+    PRICE NOTICE
+========================= */}
 
-        <div className="mb-10 rounded-2xl border border-green-800 bg-green-950/40 p-6">
-
-          <p className="mb-2 text-sm font-semibold text-green-300">
-            โปรโมชั่นวันธรรมดา
-          </p>
-
-          <div className="flex items-end gap-4">
-
-            <span className="text-2xl text-stone-500 line-through">
-              ฿{room.pricing.originalWeekday.toLocaleString()}
-            </span>
-
-            <span className="text-5xl font-bold text-green-400">
-              ฿{room.pricing.weekday.toLocaleString()}
-            </span>
-
-          </div>
-
-
-          <p className="mt-6 text-stone-400">
-            ราคาวันหยุดนักขัตฤกษ์
-          </p>
-
-          <div className="mt-2 flex items-end gap-4">
-
-            <span className="text-xl text-stone-500 line-through">
-              ฿{room.pricing.originalHoliday.toLocaleString()}
-            </span>
-
-            <span className="text-3xl font-bold text-amber-400">
-              ฿{room.pricing.holiday.toLocaleString()}
-            </span>
-
-          </div>
-
-
-          <p className="mt-6 text-xs leading-6 text-stone-400">
-            ราคาจะเปลี่ยนอัตโนมัติตามวันที่ลูกค้าเลือกเข้าพัก
-            ในขั้นตอนการจอง
-          </p>
-
-        </div>
+<p className="mb-10 text-lg font-semibold leading-8 text-amber-50 sm:text-xl lg:text-2xl">
+  ราคาจะเปลี่ยนอัตโนมัติตามวันที่ลูกค้าเลือกเข้าพัก
+  ในขั้นตอนการจอง
+</p>
 
 
         {/* =========================

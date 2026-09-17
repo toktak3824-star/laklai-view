@@ -6,21 +6,29 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function POST(req: Request) {
   try {
     const {
-      email,
-      guestName,
-      roomName,
-      checkIn,
-      checkOut,
-      totalPrice,
-      bookingCode,
-      slipUrl,
+  email,
+  guestName,
+  roomName,
+  checkIn,
+  checkOut,
+  totalPrice,
+  bookingCode,
 
-      // =========================================
-      // ข้อมูลผู้เข้าพัก
-      // =========================================
-      adults,
-      childAges,
-    } = await req.json();
+  // =========================================
+  // ข้อมูลผู้เข้าพัก
+  // =========================================
+  slipUrl,
+  adults,
+  childAges,
+
+  // =========================================
+  // วิถีบ้านป่า
+  // =========================================
+  natureExperienceSelected,
+  natureExperienceDate,
+  natureExperienceParticipants,
+  natureExperienceTotal,
+} = await req.json();
 
     const customerEmailAddress = String(email ?? "").trim();
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmailAddress)) {
@@ -97,6 +105,50 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmailAddress)) {
       adultChildren.length > 0
         ? `${adultChildren.length} คน — คิดเป็นผู้ใหญ่`
         : "0 คน";
+const natureExperienceText =
+  natureExperienceSelected &&
+  natureExperienceDate &&
+  Number(natureExperienceParticipants) > 0
+    ? `
+      <hr/>
+
+      <h3>
+        🌿 วิถีบ้านป่า
+      </h3>
+
+      <p>
+        <b>วันที่กิจกรรม:</b>
+        ${natureExperienceDate}
+      </p>
+
+      <p>
+        <b>ผู้เข้าร่วม:</b>
+        ${Number(natureExperienceParticipants)} คน
+      </p>
+
+      <p>
+        <b>ค่ากิจกรรม:</b>
+        ฿${Number(
+          natureExperienceTotal ?? 0
+        ).toLocaleString("th-TH")}
+      </p>
+
+      <p>
+        🕑 <b>ออกเดินทาง:</b>
+        ประมาณ 14:00–14:30 น.
+      </p>
+
+      <p>
+        🏡 <b>กลับถึงที่พัก:</b>
+        ประมาณ 16:00 น.
+      </p>
+
+      <p>
+        🍚 <b>อาหารเย็น:</b>
+        ประมาณ 18:00 น. ที่ร้านกาแฟ Laklai View
+      </p>
+    `
+    : "";
 
     const extraBedText = needsExtraBed
       ? "🛏️ ต้องเตรียมที่นอนเสริม"
@@ -229,6 +281,7 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmailAddress)) {
               ${extraBedText}
             </p>
 
+${natureExperienceText}
             <hr/>
 
             <h3>
@@ -417,6 +470,7 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmailAddress)) {
 
           </div>
 
+${natureExperienceText}
           <hr/>
 
           <h3>

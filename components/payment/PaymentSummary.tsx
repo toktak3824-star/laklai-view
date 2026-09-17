@@ -7,6 +7,10 @@ type Props = {
     adults: number;
     children: number;
     total_price: number;
+    nature_experience_selected?: boolean | null;
+nature_experience_date?: string | null;
+nature_experience_participants?: number | null;
+nature_experience_total?: number | null;
   };
 };
 
@@ -123,7 +127,39 @@ export default function PaymentSummary({
         </div>
 
       </div>
+{booking.nature_experience_selected &&
+  (booking.nature_experience_participants ?? 0) > 0 && (
+    <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4">
+      <h3 className="font-semibold text-green-900">
+        🌿 วิถีบ้านป่า
+      </h3>
 
+      <div className="mt-2 space-y-1 text-sm text-stone-700">
+        <p>
+          📅 วันที่กิจกรรม:{" "}
+          {booking.nature_experience_date
+            ? new Date(
+                `${booking.nature_experience_date}T00:00:00`
+              ).toLocaleDateString("th-TH", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })
+            : "-"}
+        </p>
+
+        <p>
+          👥 ผู้เข้าร่วม:{" "}
+          {booking.nature_experience_participants} คน
+        </p>
+
+        <p>
+          💰 ค่ากิจกรรม: ฿
+          {(booking.nature_experience_total ?? 0).toLocaleString()}
+        </p>
+      </div>
+    </div>
+  )}
       <div className="mt-8 rounded-2xl bg-green-50 p-6">
 
         <p className="text-sm text-green-700">

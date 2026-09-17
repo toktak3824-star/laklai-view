@@ -6,9 +6,28 @@ import type { Room } from "@/types/room";
 import BookingPolicy from "@/components/BookingPolicy";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 
+import {
+  NATURE_EXPERIENCE,
+  calculateNatureExperienceTotal,
+  isNatureExperienceAvailable,
+} from "@/utils/natureExperience";
+
 type Props = {
   room: Room;
 };
+
+function generateBookingCode() {
+  const now = new Date();
+
+  return (
+    "LKV-" +
+    now.getFullYear().toString().slice(-2) +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    String(now.getDate()).padStart(2, "0") +
+    "-" +
+    Date.now().toString().slice(-4)
+  );
+}
 
 export default function BookingForm({ room }: Props) {
   const isHouse4 = room.id === "house4";
@@ -25,7 +44,20 @@ export default function BookingForm({ room }: Props) {
   const [email, setEmail] = useState("");
 
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const [isSubmitting, setIsSubmitting] = useState(false);
+
+// =========================================
+// วิถีบ้านป่า
+// =========================================
+
+const [natureExperienceSelected, setNatureExperienceSelected] =
+  useState(false);
+
+const [natureExperienceDate, setNatureExperienceDate] =
+  useState("");
+
+const [natureExperienceParticipants, setNatureExperienceParticipants] =
+  useState(0);
 
   const bookingResult = useMemo(() => {
     if (!checkIn || !checkOut) {
@@ -49,7 +81,34 @@ export default function BookingForm({ room }: Props) {
     childAges,
   ]);
 
-  const totalPrice = bookingResult?.grandTotal ?? 0;
+  /*
+ * =========================================
+ * Nature Experience Package
+ * =========================================
+ *
+ * กิจกรรมเลือกวันแยกจากวัน Check-in
+ * ผู้เข้าร่วมกิจกรรมเลือกจำนวนเอง
+ * ไม่จำเป็นต้องเท่ากับจำนวนผู้เข้าพัก
+ */
+
+const natureExperienceAvailable =
+  isNatureExperienceAvailable(
+    natureExperienceDate
+  );
+
+const natureExperienceTotal =
+  calculateNatureExperienceTotal(
+    natureExperienceDate,
+    natureExperienceParticipants,
+    natureExperienceSelected
+  );
+
+const roomTotal =
+  bookingResult?.grandTotal ?? 0;
+
+const totalPrice =
+  roomTotal +
+  natureExperienceTotal;
 
     const olderChildren = childAges.filter(
     (age) => age >= 9 && age <= 13
@@ -326,6 +385,57 @@ export default function BookingForm({ room }: Props) {
         setIsSubmitting(false);
         return;
       }
+// =========================================
+// ตรวจสอบกิจกรรมวิถีบ้านป่า
+// =========================================
+
+if (natureExperienceSelected) {
+
+  if (!natureExperienceDate) {
+    alert(
+      "กรุณาเลือกวันที่ต้องการเข้าร่วมกิจกรรมวิถีบ้านป่า"
+    );
+
+    setIsSubmitting(false);
+    return;
+  }
+
+  if (
+    natureExperienceDate < checkIn ||
+    natureExperienceDate >= checkOut
+  ) {
+    alert(
+      "วันที่กิจกรรมต้องอยู่ภายในช่วงวันที่เข้าพัก"
+    );
+
+    setIsSubmitting(false);
+    return;
+  }
+
+  if (
+    !isNatureExperienceAvailable(
+      natureExperienceDate
+    )
+  ) {
+    alert(
+      "วันที่เลือกไม่สามารถจัดกิจกรรมวิถีบ้านป่าได้ กรุณาเลือกวันอื่น"
+    );
+
+    setIsSubmitting(false);
+    return;
+  }
+
+  if (
+    natureExperienceParticipants <= 0
+  ) {
+    alert(
+      "กรุณาเลือกจำนวนผู้เข้าร่วมกิจกรรม"
+    );
+
+    setIsSubmitting(false);
+    return;
+  }
+}
 
       // =========================================
       // 2. ตรวจจำนวนและอายุผู้เข้าพัก
@@ -575,24 +685,7 @@ export default function BookingForm({ room }: Props) {
       // 4. สร้าง Booking Code
       // =========================================
 
-      const now = new Date();
-
-      const bookingCode =
-        "LKV-" +
-        now
-          .getFullYear()
-          .toString()
-          .slice(-2) +
-        String(
-          now.getMonth() + 1
-        ).padStart(2, "0") +
-        String(
-          now.getDate()
-        ).padStart(2, "0") +
-        "-" +
-        Date.now()
-          .toString()
-          .slice(-4);
+      const bookingCode = generateBookingCode();
 
       // =========================================
       // 5. สร้าง Booking
@@ -604,21 +697,43 @@ export default function BookingForm({ room }: Props) {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    room_id: room.id,
-    guest_name: guestName.trim(),
-    email: email.trim(),
-    phone: phone.trim(),
-    check_in: checkIn,
-    check_out: checkOut,
-    adults,
-    children,
-    child_ages: childAges,
-    total_price: totalPrice,
-    booking_status: "pending",
-    payment_status: "waiting",
-    slip_url: "",
-    booking_code: bookingCode,
-  }),
+  room_id: room.id,
+  guest_name: guestName.trim(),
+  email: email.trim(),
+  phone: phone.trim(),
+
+  check_in: checkIn,
+  check_out: checkOut,
+
+  adults,
+  children,
+  child_ages: childAges,
+
+  total_price: totalPrice,
+
+  nature_experience_selected:
+    natureExperienceSelected,
+
+  nature_experience_date:
+    natureExperienceSelected
+      ? natureExperienceDate
+      : null,
+
+  nature_experience_participants:
+    natureExperienceSelected
+      ? natureExperienceParticipants
+      : 0,
+
+  nature_experience_total:
+    natureExperienceSelected
+      ? natureExperienceTotal
+      : 0,
+
+  booking_status: "pending",
+  payment_status: "waiting",
+  slip_url: "",
+  booking_code: bookingCode,
+}),
 });
 
 const result = await response.json();
@@ -665,6 +780,22 @@ const booking = result.booking;
               bookingCode,
               adults,
               childAges,
+              natureExperienceSelected,
+
+natureExperienceDate:
+  natureExperienceSelected
+    ? natureExperienceDate
+    : null,
+
+natureExperienceParticipants:
+  natureExperienceSelected
+    ? natureExperienceParticipants
+    : 0,
+
+natureExperienceTotal:
+  natureExperienceSelected
+    ? natureExperienceTotal
+    : 0,
             }),
           }
         );
@@ -688,8 +819,9 @@ const booking = result.booking;
       // 7. ไปหน้าชำระเงิน
       // =========================================
 
-      window.location.href =
-        `/payment/${bookingCode}`;
+      window.location.assign(
+  `/payment/${bookingCode}`
+);
     } catch (error) {
       console.error(
         "BOOKING ERROR =",
@@ -1069,6 +1201,206 @@ const booking = result.booking;
             </div>
           </div>
 
+{/* =========================================
+    NATURE EXPERIENCE PACKAGE
+========================================= */}
+
+<div>
+  <div className="overflow-hidden rounded-2xl border border-green-200 bg-green-50">
+
+    <div className="bg-green-900 px-5 py-4 text-white">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-green-200">
+        LAKLAI VIEW EXPERIENCE
+      </p>
+
+      <h3 className="mt-1 text-xl font-bold">
+        🌿 {NATURE_EXPERIENCE.shortTitle}
+      </h3>
+
+      <p className="mt-1 text-sm text-green-100">
+        ตุลาคม 2026 – มกราคม 2027
+      </p>
+    </div>
+
+    <div className="space-y-4 px-5 py-5">
+
+      <p className="text-sm leading-7 text-stone-700">
+        เดินเส้นทางธรรมชาติ ลัดเลาะตามป่าเขาและเนินธรรมชาติ
+        โดยเจ้าของที่พักและมัคคุเทศก์ท้องถิ่นพาเดิน
+        สัมผัสน้ำตกและธรรมชาติ พร้อมเก็บผักพื้นบ้าน
+        ตามฤดูกาล เพื่อนำกลับมาประกอบเป็นอาหารเย็น
+        แบบเรียบง่าย
+      </p>
+
+      <div className="rounded-xl border border-green-200 bg-white p-4 text-sm leading-7 text-stone-700">
+
+        <p>
+          🌳 <b>ช่วงกิจกรรม</b> เดินเส้นทางธรรมชาติ
+        </p>
+
+        <p>
+          🌿 <b>สิ่งที่ได้สัมผัส</b> ธรรมชาติ น้ำตก
+          ลำธาร ประสบการณ์ใหม่ วิถีชีวิตคนพื้นเมืองน่าน และวัตถุดิบพื้นบ้านตามฤดูกาล
+        </p>
+
+         <p>
+          🥾 <b>ออกเดินทาง</b> {NATURE_EXPERIENCE.departureTime}
+          ศึกษาธรรมชาติ เดินป่า และเก็บผักพื้นบ้านตามฤดูกาล
+        </p>  
+        
+        <p>
+        
+          🏡 <b>กลับถึงที่พัก</b> {NATURE_EXPERIENCE.returnTime}
+          เพื่อพักผ่อนตามอัธยาศัย
+        </p>
+
+        <p>
+          🍚 <b>อาหารเย็น</b> {NATURE_EXPERIENCE.dinnerTime}
+          ที่{NATURE_EXPERIENCE.dinnerLocation}
+        </p>
+
+      </div>
+{natureExperienceSelected && (
+  <div className="rounded-xl border border-green-200 bg-white p-4">
+
+    <label
+      htmlFor="nature-experience-date"
+      className="mb-2 block text-sm font-semibold text-stone-700"
+    >
+      📅 วันที่ต้องการเข้าร่วมกิจกรรม
+    </label>
+
+    <input
+      id="nature-experience-date"
+      type="date"
+      value={natureExperienceDate}
+      min={checkIn || undefined}
+      max={
+        checkOut
+          ? new Date(
+              new Date(checkOut).getTime() -
+                24 * 60 * 60 * 1000
+            )
+              .toISOString()
+              .split("T")[0]
+          : undefined
+      }
+      onChange={(e) => {
+        setNatureExperienceDate(e.target.value);
+      }}
+      className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-base text-black"
+    />
+
+    <p className="mt-2 text-xs leading-5 text-stone-500">
+      เลือกวันที่กิจกรรมได้ภายในช่วงวันที่เข้าพัก
+      ทั้งวันธรรมดาและวันเสาร์–อาทิตย์
+      โดยงดจัดกิจกรรมในวันหยุดนักขัตฤกษ์
+    </p>
+
+    {natureExperienceDate &&
+      !isNatureExperienceAvailable(
+        natureExperienceDate
+      ) && (
+        <p className="mt-2 text-sm font-semibold text-red-600">
+          ❌ วันที่เลือกไม่สามารถจัดกิจกรรมได้
+          กรุณาเลือกวันอื่น
+        </p>
+      )}
+
+  </div>
+)}
+
+{natureExperienceSelected && (
+  <div className="rounded-xl border border-green-200 bg-white p-4">
+
+    <label
+      htmlFor="nature-experience-participants"
+      className="mb-2 block text-sm font-semibold text-stone-700"
+    >
+      👥 จำนวนผู้เข้าร่วมกิจกรรม
+    </label>
+
+    <select
+      id="nature-experience-participants"
+      value={natureExperienceParticipants}
+      onChange={(e) => {
+        setNatureExperienceParticipants(
+          Number(e.target.value)
+        );
+      }}
+      className="min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-base text-black"
+    >
+
+      <option value={0}>
+        กรุณาเลือกจำนวนผู้เข้าร่วม
+      </option>
+
+      {Array.from(
+        { length: 20 },
+        (_, index) => index + 1
+      ).map((count) => (
+        <option
+          key={count}
+          value={count}
+        >
+          {count} คน
+        </option>
+      ))}
+
+    </select>
+
+    <p className="mt-2 text-xs leading-5 text-stone-500">
+      จำนวนผู้เข้าร่วมกิจกรรมสามารถเลือกแยกจากจำนวนผู้เข้าพักได้
+    </p>
+
+  </div>
+)}
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-green-300 bg-white p-4">
+
+        <input
+  type="checkbox"
+  checked={natureExperienceSelected}
+  onChange={(e) => {
+    setNatureExperienceSelected(
+      e.target.checked
+    );
+
+    if (!e.target.checked) {
+      setNatureExperienceDate("");
+      setNatureExperienceParticipants(0);
+    }
+  }}
+  className="mt-1 h-5 w-5 shrink-0 accent-green-700"
+/>
+
+        <div className="flex-1">
+
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+
+  <span className="font-bold text-green-900">
+    เพิ่มกิจกรรมนี้ในการจอง
+  </span>
+
+  <span className="text-lg font-bold text-green-700">
+    ฿899 / คน พร้อมอาหารระหว่างกิจกรรม-เย็น
+  </span>
+
+</div>
+
+<p className="mt-2 text-sm leading-6 text-stone-500">
+  คิดตามจำนวนผู้เข้าร่วมกิจกรรม
+  และคิดเพียงครั้งเดียวต่อการจอง
+  ไม่คิดตามจำนวนคืนที่เข้าพัก
+</p>
+
+        </div>
+
+      </label>
+
+    </div>
+  </div>
+</div>
+
           {/* Price summary */}
 <div className="overflow-hidden rounded-2xl border border-green-200 bg-green-50">
 
@@ -1125,6 +1457,58 @@ const booking = result.booking;
         ฿{normalPriceTotal.toLocaleString()}
       </span>
     </div>
+{natureExperienceSelected &&
+  natureExperienceTotal > 0 && (
+    <div className="rounded-xl border border-green-200 bg-white p-4">
+
+      <div className="flex items-start justify-between gap-4">
+
+        <div className="min-w-0">
+
+          <p className="font-semibold text-green-900">
+            🌿 วิถีบ้านป่า
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-stone-500">
+            📅 วันที่กิจกรรม:{" "}
+            {natureExperienceDate
+              ? new Date(
+                  `${natureExperienceDate}T00:00:00`
+                ).toLocaleDateString("th-TH", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })
+              : "-"}
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-stone-500">
+  👥 ผู้เข้าร่วม:{" "}
+  {natureExperienceParticipants} คน
+</p>
+
+<p className="mt-1 text-xs leading-5 text-stone-500">
+  ฿899 × {natureExperienceParticipants} คน
+</p>
+
+<p className="mt-2 text-xs leading-5 text-stone-500">
+  🥾 ออกเดินทางประมาณ 14:00–14:30 น.
+  <br />
+  🏡 กลับถึงที่พักประมาณ 16:00 น.
+  <br />
+  🍚 อาหารเย็นประมาณ 18:00 น.
+  ที่ร้านกาแฟ Laklai View
+</p>
+        </div>
+
+        <span className="shrink-0 font-bold text-green-700">
+          ฿{natureExperienceTotal.toLocaleString()}
+        </span>
+
+      </div>
+
+    </div>
+  )}
 
     <div className="flex items-center justify-between gap-4 border-t border-green-200 pt-4">
 
@@ -1134,8 +1518,8 @@ const booking = result.booking;
         </p>
 
         <p className="text-xs text-stone-500">
-          รวมค่าที่พักทั้งหมด
-        </p>
+  รวมค่าที่พักและกิจกรรมที่เลือก
+</p>
       </div>
 
       <p className="text-3xl font-bold text-green-700 sm:text-4xl">

@@ -167,12 +167,16 @@ function GuestDetails({ booking }: { booking: any }) {
             </th>
 
             <th className="text-left">
-              วันที่
-            </th>
+  วันที่
+</th>
 
-            <th className="text-left">
-              ยอดเงิน
-            </th>
+<th className="text-left">
+  วิถีบ้านป่า
+</th>
+
+<th className="text-left">
+  ยอดเงิน
+</th>
 
             <th className="text-left">
               สลิป
@@ -225,22 +229,54 @@ function GuestDetails({ booking }: { booking: any }) {
               </td>
 
               {/* วันที่ */}
-              <td>
-                <div>
-                  {booking.check_in}
-                </div>
+<td>
+  <div>
+    {booking.check_in}
+  </div>
 
-                <div>
-                  ถึง
-                </div>
+  <div>
+    ถึง
+  </div>
 
-                <div>
-                  {booking.check_out}
-                </div>
-              </td>
+  <div>
+    {booking.check_out}
+  </div>
+</td>
 
-              {/* ยอดเงิน */}
-              <td className="font-semibold">
+{/* วิถีบ้านป่า */}
+<td>
+  {booking.nature_experience_selected &&
+  Number(booking.nature_experience_participants ?? 0) > 0 ? (
+    <div className="min-w-[190px] rounded-xl bg-green-50 p-3 text-sm">
+      <div className="font-bold text-green-800">
+        🌿 วิถีบ้านป่า
+      </div>
+
+      <div className="mt-1 text-stone-700">
+        📅 {booking.nature_experience_date ?? "-"}
+      </div>
+
+      <div className="text-stone-700">
+        👥 {Number(
+          booking.nature_experience_participants ?? 0
+        )} คน
+      </div>
+
+      <div className="font-semibold text-green-700">
+        💰 ฿{Number(
+          booking.nature_experience_total ?? 0
+        ).toLocaleString()}
+      </div>
+    </div>
+  ) : (
+    <span className="text-sm text-stone-400">
+      ไม่ได้เลือก
+    </span>
+  )}
+</td>
+
+{/* ยอดเงิน */}
+<td className="font-semibold">
                 ฿
                 {Number(
                   booking.total_price

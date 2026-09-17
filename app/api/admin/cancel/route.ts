@@ -161,6 +161,50 @@ export async function POST(req: Request) {
     // =========================================
     // 6. ส่งอีเมลแจ้งลูกค้า
     // =========================================
+const natureExperienceText =
+  booking.nature_experience_selected &&
+  booking.nature_experience_date &&
+  Number(booking.nature_experience_participants ?? 0) > 0
+    ? `
+      <hr />
+
+      <h3>🌿 วิถีบ้านป่า</h3>
+
+      <p>
+        <strong>วันที่กิจกรรม:</strong>
+        ${booking.nature_experience_date}
+      </p>
+
+      <p>
+        <strong>ผู้เข้าร่วม:</strong>
+        ${Number(
+          booking.nature_experience_participants ?? 0
+        )} คน
+      </p>
+
+      <p>
+        <strong>ค่ากิจกรรม:</strong>
+        ฿${Number(
+          booking.nature_experience_total ?? 0
+        ).toLocaleString("th-TH")}
+      </p>
+
+      <p>
+        🕑 <strong>ออกเดินทาง:</strong>
+        ประมาณ 14:00–14:30 น.
+      </p>
+
+      <p>
+        🏡 <strong>กลับถึงที่พัก:</strong>
+        ประมาณ 16:00 น.
+      </p>
+
+      <p>
+        🍚 <strong>อาหารเย็น:</strong>
+        ประมาณ 18:00 น. ที่ร้านกาแฟ Laklai View
+      </p>
+    `
+    : "";
 
     const {
       data: emailData,
@@ -277,7 +321,7 @@ export async function POST(req: Request) {
               ผู้ใหญ่ ${booking.adults ?? 0} คน
               เด็ก ${booking.children ?? 0} คน
             </p>
-
+${natureExperienceText}
             <p>
               <strong>
                 ยอดการจอง:
