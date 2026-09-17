@@ -1214,15 +1214,50 @@ natureExperienceTotal:
       </p>
 
       <h3 className="mt-1 text-xl font-bold">
-        🌿 {NATURE_EXPERIENCE.shortTitle}
+        🌿 {NATURE_EXPERIENCE.shortTitle}  {NATURE_EXPERIENCE.subtitle}
       </h3>
 
       <p className="mt-1 text-sm text-green-100">
-        ตุลาคม 2026 – มกราคม 2027
+        18 กันยายน 2026 – 20 มีนาคม 2027
       </p>
     </div>
 
     <div className="space-y-4 px-5 py-5">
+
+      {/* รูปกิจกรรมวิถีบ้านป่า 6 รูป */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {[
+          "/images/nature-experience/nature1.jpg",
+          "/images/nature-experience/nature2.jpg",
+          "/images/nature-experience/nature3.jpg",
+          "/images/nature-experience/nature4.jpg",
+          "/images/nature-experience/nature5.mp4",
+          "/images/nature-experience/nature6.jpg",
+        ].map((image, index) => (
+          <div
+            key={image}
+            className="overflow-hidden rounded-xl bg-stone-100"
+          >
+            {image.endsWith(".mp4") ? (
+  <video
+    src={image}
+    className="h-32 w-full object-cover sm:h-40"
+    muted
+    loop
+    autoPlay
+    playsInline
+  />
+) : (
+  <img
+    src={image}
+    alt={`กิจกรรมวิถีบ้านป่า ${index + 1}`}
+    className="h-32 w-full object-cover transition-transform duration-300 hover:scale-105 sm:h-40"
+    loading={index < 2 ? "eager" : "lazy"}
+  />
+)}
+          </div>
+        ))}
+      </div>
 
       <p className="text-sm leading-7 text-stone-700">
         เดินเส้นทางธรรมชาติ ลัดเลาะตามป่าเขาและเนินธรรมชาติ
