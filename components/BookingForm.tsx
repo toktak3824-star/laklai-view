@@ -12,6 +12,44 @@ import {
   isNatureExperienceAvailable,
 } from "@/utils/natureExperience";
 
+// =====================================================
+// วันที่งดรับกิจกรรม
+// หมายเหตุ:
+// วันเหล่านี้ "งดเฉพาะกิจกรรม"
+// ไม่ใช่วันปิดรับจองที่พัก
+// =====================================================
+
+const NATURE_EXPERIENCE_BLOCKED_DATES = [
+  // ตุลาคม 2569
+  "2026-10-24",
+  "2026-10-25",
+
+  // ธันวาคม 2569
+  "2026-12-05",
+  "2026-12-06",
+  "2026-12-07",
+
+  "2026-12-24",
+  "2026-12-25",
+  "2026-12-26",
+  "2026-12-27",
+  "2026-12-28",
+  "2026-12-29",
+  "2026-12-30",
+  "2026-12-31",
+
+  // มกราคม 2570
+  "2027-01-01",
+  "2027-01-02",
+] as const;
+function isNatureExperienceBlockedDate(
+  date: string
+) {
+  return NATURE_EXPERIENCE_BLOCKED_DATES.includes(
+    date as (typeof NATURE_EXPERIENCE_BLOCKED_DATES)[number]
+  );
+}
+
 type Props = {
   room: Room;
 };
@@ -1384,9 +1422,15 @@ natureExperienceTotal:
 
     </select>
 
-    <p className="mt-2 text-xs leading-5 text-stone-500">
-      จำนวนผู้เข้าร่วมกิจกรรมสามารถเลือกแยกจากจำนวนผู้เข้าพักได้
-    </p>
+    <div className="mt-2 space-y-1">
+  <p className="text-xs leading-5 text-stone-500">
+    จำนวนผู้เข้าร่วมกิจกรรมสามารถเลือกแยกจากจำนวนผู้เข้าพักได้
+  </p>
+
+  <p className="text-xs font-semibold leading-5 text-red-600">
+    ⚠️ ไม่อนุญาตให้เด็กอายุต่ำกว่า 12 ปีเข้าร่วมกิจกรรม
+  </p>
+</div>
 
   </div>
 )}

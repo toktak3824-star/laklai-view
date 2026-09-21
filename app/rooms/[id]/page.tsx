@@ -76,7 +76,9 @@ export async function generateMetadata({
       card: "summary_large_image",
       title,
       description,
-      images: room.images?.[0] ? [room.images[0]] : undefined,
+      images: room.images?.[0]
+        ? [room.images[0]]
+        : undefined,
     },
 
     robots: {
@@ -86,9 +88,19 @@ export async function generateMetadata({
   };
 }
 
-export default async function RoomDetailPage({ params }: Props) {
+export default async function RoomDetailPage({
+  params,
+}: Props) {
   const { id } = await params;
 
+  /*
+   * =====================================================
+   * ห้ามเปลี่ยนชื่อบ้านพักตรงนี้
+   *
+   * room.title จะใช้ชื่อเดิมจาก data/rooms.ts
+   * เช่น บ้านแสงดาว และชื่อบ้านอื่น ๆ
+   * =====================================================
+   */
   const room = rooms.find((r) => r.id === id);
 
   if (!room) return notFound();
@@ -101,7 +113,9 @@ export default async function RoomDetailPage({ params }: Props) {
     url: `${BASE_URL}/rooms/${room.id}`,
 
     image: room.images.map((image) =>
-      image.startsWith("http") ? image : `${BASE_URL}${image}`
+      image.startsWith("http")
+        ? image
+        : `${BASE_URL}${image}`
     ),
 
     containedInPlace: {
@@ -127,41 +141,71 @@ export default async function RoomDetailPage({ params }: Props) {
         }}
       />
 
-      <main className="mx-auto max-w-7xl px-6 py-20">
-
-        {/* =========================
+      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        {/* =====================================================
             ROOM HEADER
-        ========================== */}
+        ===================================================== */}
 
-        <h1 className="mb-2 text-5xl font-bold">
-          {room.title}
-        </h1>
+        <section>
+          <h1 className="mb-2 text-3xl font-bold text-amber-50 sm:text-4xl lg:text-5xl">
+            {room.title}
+          </h1>
 
-        <p className="mb-6 text-xl italic text-green-700">
-          {room.subtitle}
-        </p>
+          <p className="mb-5 text-lg italic text-green-400 sm:text-xl">
+            {room.subtitle}
+          </p>
 
-        <p className="mb-10 text-xl font-light leading-9 text-stone-100">
-          {room.description}
-        </p>
+          <p className="max-w-4xl text-base font-light leading-8 text-stone-100 sm:text-xl sm:leading-9">
+            {room.description}
+          </p>
 
+          {/* =====================================================
+              PRICE NOTICE
+          ===================================================== */}
 
-{/* =========================
-    PRICE NOTICE
-========================= */}
+          <p className="mt-6 text-base font-semibold leading-7 text-amber-50 sm:text-lg sm:leading-8 lg:text-xl">
+            ราคาจะเปลี่ยนอัตโนมัติตามวันที่ลูกค้าเลือกเข้าพัก
+            ในขั้นตอนการจอง
+          </p>
 
-<p className="mb-10 text-lg font-semibold leading-8 text-amber-50 sm:text-xl lg:text-2xl">
-  ราคาจะเปลี่ยนอัตโนมัติตามวันที่ลูกค้าเลือกเข้าพัก
-  ในขั้นตอนการจอง
-</p>
+          {/* =====================================================
+              QUICK BOOKING ACTION
+          ===================================================== */}
 
+          <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <a
+              href="#booking"
+              className="flex min-h-14 items-center justify-center rounded-full bg-[#3D7A4E] px-6 py-3.5 text-base font-bold text-white shadow-lg transition hover:bg-[#2B5B39] active:scale-[0.98] sm:text-lg"
+            >
+              📅 เช็กวันว่าง / จองบ้านนี้
+            </a>
 
-        {/* =========================
+            <a
+              href="#details"
+              className="flex min-h-14 items-center justify-center rounded-full border border-stone-600 bg-stone-900 px-6 py-3.5 text-base font-semibold text-stone-100 transition hover:bg-stone-800 active:scale-[0.98] sm:text-lg"
+            >
+              ดูรายละเอียดบ้านพัก
+            </a>
+          </div>
+
+          {/* =====================================================
+              BOOKING SHORT NOTE
+          ===================================================== */}
+
+          <div className="mt-5 rounded-2xl border border-green-800/60 bg-green-950/30 p-4 text-sm leading-6 text-green-100 sm:p-5 sm:text-base">
+            📅 เลือกวันเข้าพักเพื่อดูวันว่างของบ้านนี้
+            และดำเนินการจองได้ทันที
+          </div>
+        </section>
+
+        {/* =====================================================
             PHOTO GALLERY
-        ========================== */}
+        ===================================================== */}
 
-        <section className="mb-14">
-
+        <section
+          id="details"
+          className="mb-14 mt-14 scroll-mt-24"
+        >
           <div className="mb-8">
             <p className="mb-2 text-sm font-semibold uppercase tracking-[0.3em] text-green-400">
               LAKLAI VIEW
@@ -176,40 +220,31 @@ export default async function RoomDetailPage({ params }: Props) {
             </p>
           </div>
 
-
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-
             {room.images.map((image) => (
               <div
                 key={image}
                 className="relative aspect-[4/3] overflow-hidden rounded-2xl"
               >
-
                 <Image
                   src={image}
-                  alt={`${room.title} - Laklai View ที่พักปัว น่าน`}
+                  alt={`${room.title} - Laklai View ที่พักบนเส้นทางปัว–บ่อเกลือ จังหวัดน่าน`}
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                   className="object-cover transition duration-300 hover:scale-105"
                 />
-
               </div>
             ))}
-
           </div>
-
         </section>
 
-
-        {/* =========================
+        {/* =====================================================
             VIDEO GALLERY
-        ========================== */}
+        ===================================================== */}
 
         {room.videos && room.videos.length > 0 && (
           <section className="mb-14">
-
             <div className="mb-8">
-
               <p className="mb-2 text-sm font-semibold uppercase tracking-[0.3em] text-green-400">
                 EXPERIENCE LAKLAI
               </p>
@@ -221,18 +256,14 @@ export default async function RoomDetailPage({ params }: Props) {
               <p className="mt-3 text-stone-400">
                 สัมผัสบรรยากาศของบ้านพักและธรรมชาติของหลักลาย View
               </p>
-
             </div>
 
-
             <div className="grid gap-8 md:grid-cols-2">
-
               {room.videos.map((video) => (
                 <div
                   key={video}
                   className="overflow-hidden rounded-3xl border border-white/10 bg-black/30 shadow-xl"
                 >
-
                   <video
                     controls
                     playsInline
@@ -247,25 +278,20 @@ export default async function RoomDetailPage({ params }: Props) {
 
                     เบราว์เซอร์ของคุณไม่รองรับการเล่นวิดีโอ
                   </video>
-
                 </div>
               ))}
-
             </div>
-
           </section>
         )}
 
-
-                {/* =========================
+        {/* =====================================================
             FACILITIES & BENEFITS
-        ========================== */}
+        ===================================================== */}
 
         <section className="mb-16">
-
           {/* Section Heading */}
-          <div className="mb-10 text-center">
 
+          <div className="mb-10 text-center">
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-green-400">
               LAKLAI VIEW EXPERIENCE
             </p>
@@ -278,19 +304,16 @@ export default async function RoomDetailPage({ params }: Props) {
               เพราะการพักผ่อนที่ดี ไม่ได้มีเพียงบ้านพัก
               แต่คือรายละเอียดเล็ก ๆ ที่เราเตรียมไว้ให้คุณตลอดการเข้าพัก
             </p>
-
           </div>
 
-
-          {/* =========================
+          {/* =====================================================
               SPECIAL BENEFITS
-          ========================== */}
+          ===================================================== */}
 
           <div className="mb-10 grid gap-5 md:grid-cols-3">
-
             {/* Breakfast */}
-            <div className="rounded-3xl border border-amber-200/10 bg-gradient-to-br from-amber-50/10 to-green-950/50 p-6 shadow-lg">
 
+            <div className="rounded-3xl border border-amber-200/10 bg-gradient-to-br from-amber-50/10 to-green-950/50 p-6 shadow-lg">
               <div className="mb-4 text-4xl">
                 🍳
               </div>
@@ -303,13 +326,11 @@ export default async function RoomDetailPage({ params }: Props) {
                 ที่พักพร้อมอาหารเช้า Breakfast
                 ที่คุ้มค่า เติมพลังให้พร้อมออกไปสัมผัสธรรมชาติของน่าน
               </p>
-
             </div>
 
-
             {/* Welcome Drink */}
-            <div className="rounded-3xl border border-amber-200/10 bg-gradient-to-br from-amber-50/10 to-green-950/50 p-6 shadow-lg">
 
+            <div className="rounded-3xl border border-amber-200/10 bg-gradient-to-br from-amber-50/10 to-green-950/50 p-6 shadow-lg">
               <div className="mb-4 text-4xl">
                 🌼🫖
               </div>
@@ -323,13 +344,11 @@ export default async function RoomDetailPage({ params }: Props) {
                 สำหรับช่วงเช้าหรือช่วงบ่าย
                 ผลิตภัณฑ์หลักลาย View
               </p>
-
             </div>
 
-
             {/* Drip Coffee */}
-            <div className="rounded-3xl border border-amber-200/10 bg-gradient-to-br from-amber-50/10 to-green-950/50 p-6 shadow-lg">
 
+            <div className="rounded-3xl border border-amber-200/10 bg-gradient-to-br from-amber-50/10 to-green-950/50 p-6 shadow-lg">
               <div className="mb-4 text-4xl">
                 ☕️
               </div>
@@ -342,28 +361,22 @@ export default async function RoomDetailPage({ params }: Props) {
                 นำเสนอด้วยกาแฟคุณภาพดีของเมืองน่าน
                 พร้อมรสชาติที่เป็นเอกลักษณ์เฉพาะของหลักลาย View
               </p>
-
             </div>
-
           </div>
 
-
-          {/* =========================
+          {/* =====================================================
               PRIVATE MINERAL POOL
               HOUSE 1-3 ONLY
-          ========================== */}
+          ===================================================== */}
 
           {room.id !== "house4" && (
             <div className="mb-10 overflow-hidden rounded-3xl border border-green-700/40 bg-gradient-to-r from-green-950/80 via-green-900/50 to-stone-900/80 p-6 shadow-xl sm:p-8">
-
               <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-
                 <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-green-500/10 text-5xl">
                   🌳🏊‍♂️
                 </div>
 
                 <div>
-
                   <h3 className="text-2xl font-bold text-green-300 sm:text-3xl">
                     สระน้ำแร่ธรรมชาติส่วนตัว
                   </h3>
@@ -377,23 +390,17 @@ export default async function RoomDetailPage({ params }: Props) {
                   <p className="mt-3 text-xs font-medium text-amber-200 sm:text-sm">
                     🩱 กรุณาสวมชุดว่ายน้ำเมื่อใช้บริการสระน้ำ ห้ามนำสิ่งปฏิกูลลงในสระน้ำ
                   </p>
-
                 </div>
-
               </div>
-
             </div>
           )}
 
-
-          {/* =========================
+          {/* =====================================================
               AMENITIES
-          ========================== */}
+          ===================================================== */}
 
           <div className="rounded-3xl border border-white/10 bg-stone-900/60 p-6 shadow-xl sm:p-8">
-
             <div className="mb-8">
-
               <p className="mb-2 text-sm font-semibold uppercase tracking-[0.25em] text-green-400">
                 AMENITIES
               </p>
@@ -405,12 +412,9 @@ export default async function RoomDetailPage({ params }: Props) {
               <p className="mt-2 text-sm text-stone-400">
                 เราเตรียมสิ่งจำเป็นสำหรับการพักผ่อนของคุณไว้ให้เรียบร้อย
               </p>
-
             </div>
 
-
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-
               <div className="rounded-2xl bg-white/5 p-4 text-sm text-stone-200">
                 🛋️ พื้นที่ส่วนตัว
               </div>
@@ -474,20 +478,20 @@ export default async function RoomDetailPage({ params }: Props) {
               <div className="rounded-2xl bg-white/5 p-4 text-sm text-stone-200">
                 🚿 เครื่องทำน้ำอุ่น
               </div>
-
             </div>
-
           </div>
-
         </section>
 
-
-        {/* =========================
+        {/* =====================================================
             BOOKING
-        ========================== */}
+        ===================================================== */}
 
-        <BookingForm room={room} />
-
+        <section
+          id="booking"
+          className="scroll-mt-24"
+        >
+          <BookingForm room={room} />
+        </section>
       </main>
     </>
   );

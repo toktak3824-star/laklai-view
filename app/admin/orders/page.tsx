@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 type CoffeeOrder = {
@@ -725,9 +726,12 @@ if (!response.ok) {
 
         <div className="mt-6 overflow-hidden rounded-2xl bg-stone-100 p-3">
 
-          <img
+          <Image
             src={slipImageUrl}
             alt={`สลิป ${selectedOrder.order_code}`}
+            width={1200}
+            height={1600}
+            unoptimized
             className="mx-auto max-h-[70vh] max-w-full rounded-xl object-contain"
           />
 

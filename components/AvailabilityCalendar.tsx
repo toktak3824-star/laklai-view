@@ -1,5 +1,7 @@
 "use client";
 
+import { rooms } from "@/data/rooms";
+import { getNightlyPrice } from "@/utils/getNightlyPrice";
 import { useEffect, useMemo, useState } from "react";
 
 type BlockedDate = string;
@@ -40,6 +42,37 @@ export default function AvailabilityCalendar({
   onCheckInChange,
   onCheckOutChange,
 }: Props) {
+  /*
+   * =========================================
+   * ข้อมูลบ้านพัก
+   * =========================================
+   *
+   * ใช้ rooms.ts เดิมของระบบ
+   * ไม่สร้างชื่อบ้านใหม่
+   */
+
+  const room = rooms.find((item) => item.id === roomId);
+
+  /*
+   * =========================================
+   * ราคาของแต่ละคืน
+   * =========================================
+   *
+   * สำคัญ:
+   * ไม่ใส่ราคาเองตรงนี้
+   *
+   * getNightlyPrice()
+   * จะไปเรียก calculatePrice()
+   *
+   * ดังนั้นราคาจะใช้กฎราคาเดียวกับ BookingForm
+   */
+
+  const getPriceForDate = (dateString: string) => {
+    if (!room) return 0;
+
+    return getNightlyPrice(room, dateString);
+  };
+
   const today = useMemo(() => {
     const now = new Date();
 
@@ -113,8 +146,8 @@ export default function AvailabilityCalendar({
   // =========================================
 
   const blockedDateSet = useMemo(() => {
-  return new Set(blockedDates);
-}, [blockedDates]);
+    return new Set(blockedDates);
+  }, [blockedDates]);
 
   // =========================================
   // จำนวนวันในเดือน
@@ -168,8 +201,8 @@ export default function AvailabilityCalendar({
     }
 
     if (blockedDateSet.has(dateString)) {
-  return "blocked";
-}
+      return "blocked";
+    }
 
     return "available";
   }
@@ -191,45 +224,91 @@ export default function AvailabilityCalendar({
     // =======================================
     // โหมดผู้ดูแล: คลิกเพื่อเปิด/ปิดรับจอง
     // =======================================
+
     if (admin) {
       if (status === "booked") {
-        alert("วันที่มีลูกค้าจองแล้ว ไม่สามารถปิดรับจองซ้ำได้");
+        alert(
+          "วันที่มีลูกค้าจองแล้ว ไม่สามารถปิดรับจองซ้ำได้"
+        );
         return;
       }
 
       let reason = "";
+
       if (status === "available") {
-        reason = window.prompt("เหตุผลที่ต้องการปิดรับจองวันที่นี้ (เว้นว่างได้)", "") || "";
+        reason =
+          window.prompt(
+            "เหตุผลที่ต้องการปิดรับจองวันที่นี้ (เว้นว่างได้)",
+            ""
+          ) || "";
       } else if (status === "blocked") {
-        const confirmed = window.confirm("ต้องการเปิดรับจองวันที่นี้อีกครั้งใช่หรือไม่?");
+        const confirmed = window.confirm(
+          "ต้องการเปิดรับจองวันที่นี้อีกครั้งใช่หรือไม่?"
+        );
+
         if (!confirmed) return;
       }
 
       try {
         setLoading(true);
-        const response = await fetch("/api/admin/blocked-dates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ roomId, blockedDate: dateString, reason }),
-        });
+
+        const response = await fetch(
+          "/api/admin/blocked-dates",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              roomId,
+              blockedDate: dateString,
+              reason,
+            }),
+          }
+        );
+
         const data = await response.json();
-        if (!response.ok) throw new Error(data?.error || "ไม่สามารถเปลี่ยนสถานะวันได้");
-        alert(data.message || "เปลี่ยนสถานะวันที่เรียบร้อยแล้ว");
-        setRefreshToken((value) => value + 1);
+
+        if (!response.ok) {
+          throw new Error(
+            data?.error ||
+              "ไม่สามารถเปลี่ยนสถานะวันได้"
+          );
+        }
+
+        alert(
+          data.message ||
+            "เปลี่ยนสถานะวันที่เรียบร้อยแล้ว"
+        );
+
+        setRefreshToken(
+          (value) => value + 1
+        );
       } catch (error) {
-        alert(error instanceof Error ? error.message : "ไม่สามารถเปลี่ยนสถานะวันได้");
+        alert(
+          error instanceof Error
+            ? error.message
+            : "ไม่สามารถเปลี่ยนสถานะวันได้"
+        );
       } finally {
         setLoading(false);
       }
+
       return;
     }
 
+    // =======================================
     // จองแล้ว
+    // =======================================
+
     if (status === "booked") {
       return;
     }
 
+    // =======================================
     // ปิดรับจอง
+    // =======================================
+
     if (status === "blocked") {
       return;
     }
@@ -241,6 +320,9 @@ export default function AvailabilityCalendar({
     if (!checkIn) {
       onCheckInChange(dateString);
       onCheckOutChange("");
+
+      onSelectDate?.(dateString);
+
       return;
     }
 
@@ -252,11 +334,15 @@ export default function AvailabilityCalendar({
       if (dateString <= checkIn) {
         onCheckInChange(dateString);
         onCheckOutChange("");
+
+        onSelectDate?.(dateString);
+
         return;
       }
 
       // ตรวจว่าระหว่างวันเข้า-วันออก
       // มีวันที่ถูกจองหรือปิดหรือไม่
+
       const start = new Date(
         `${checkIn}T00:00:00`
       );
@@ -284,7 +370,7 @@ export default function AvailabilityCalendar({
         ) {
           alert(
             "ไม่สามารถเลือกช่วงวันที่นี้ได้\n\n" +
-            "มีวันที่ถูกจองหรือปิดรับจองอยู่ระหว่างช่วงวันที่ที่เลือก"
+              "มีวันที่ถูกจองหรือปิดรับจองอยู่ระหว่างช่วงวันที่ที่เลือก"
           );
 
           return;
@@ -296,6 +382,9 @@ export default function AvailabilityCalendar({
       }
 
       onCheckOutChange(dateString);
+
+      onSelectDate?.(dateString);
+
       return;
     }
 
@@ -305,6 +394,8 @@ export default function AvailabilityCalendar({
 
     onCheckInChange(dateString);
     onCheckOutChange("");
+
+    onSelectDate?.(dateString);
   }
 
   // =========================================
@@ -348,7 +439,9 @@ export default function AvailabilityCalendar({
   return (
     <div className="rounded-3xl border border-stone-700 bg-stone-950 p-5 text-white shadow-xl md:p-7">
 
-      {/* หัวปฏิทิน */}
+      {/* =====================================
+          หัวปฏิทิน
+      ====================================== */}
 
       <div className="mb-6 flex items-center justify-between gap-4">
 
@@ -384,7 +477,9 @@ export default function AvailabilityCalendar({
 
       </div>
 
-      {/* คำอธิบายสถานะ */}
+      {/* =====================================
+          คำอธิบายสถานะ
+      ====================================== */}
 
       <div className="mb-6 flex flex-wrap justify-center gap-3 text-sm">
 
@@ -411,7 +506,9 @@ export default function AvailabilityCalendar({
 
       </div>
 
-      {/* วันในสัปดาห์ */}
+      {/* =====================================
+          วันในสัปดาห์
+      ====================================== */}
 
       <div className="mb-2 grid grid-cols-7 gap-2 text-center text-sm font-bold text-stone-300">
 
@@ -431,7 +528,9 @@ export default function AvailabilityCalendar({
 
       </div>
 
-      {/* ตารางวันที่ */}
+      {/* =====================================
+          ตารางวันที่
+      ====================================== */}
 
       <div className="grid grid-cols-7 gap-2">
 
@@ -464,6 +563,20 @@ export default function AvailabilityCalendar({
           const isSelected =
             isCheckIn || isCheckOut;
 
+          /*
+           * ราคาของคืนนี้
+           *
+           * เรียกจาก calculatePrice ผ่าน
+           * getNightlyPrice()
+           *
+           * ไม่มีการ hard-code ราคา
+           */
+
+          const nightlyPrice =
+            status === "available" && !isPast
+              ? getPriceForDate(dateString)
+              : 0;
+
           let className =
             "min-h-[76px] rounded-2xl border p-3 text-left transition";
 
@@ -493,7 +606,7 @@ export default function AvailabilityCalendar({
               type="button"
               disabled={
                 isPast ||
-                (status === "booked")
+                status === "booked"
               }
               onClick={() =>
                 handleDateClick(date)
@@ -501,9 +614,13 @@ export default function AvailabilityCalendar({
               className={className}
             >
 
+              {/* วันที่ */}
+
               <div className="text-lg font-bold">
                 {date.getDate()}
               </div>
+
+              {/* สถานะ / ราคา */}
 
               <div className="mt-2 text-xs font-semibold">
 
@@ -521,9 +638,22 @@ export default function AvailabilityCalendar({
 
                 {!isSelected &&
                   status === "available" && (
-                    <span className="text-emerald-400">
-                      ว่าง
-                    </span>
+                    <div className="space-y-0.5">
+
+                      <div className="text-emerald-400">
+                        ว่าง
+                      </div>
+
+                      {nightlyPrice > 0 && (
+                        <div className="text-amber-300">
+                          ฿
+                          {nightlyPrice.toLocaleString(
+                            "th-TH"
+                          )}
+                        </div>
+                      )}
+
+                    </div>
                   )}
 
                 {!isSelected &&
@@ -554,30 +684,48 @@ export default function AvailabilityCalendar({
 
       </div>
 
-      {/* คำแนะนำ */}
+      {/* =====================================
+          คำแนะนำ
+      ====================================== */}
 
       <div className="mt-6 rounded-2xl border border-amber-700/70 bg-stone-900 p-4 text-sm leading-6 text-amber-300">
-        <strong>{admin ? "วิธีจัดการปฏิทินสำหรับผู้ดูแล" : "วิธีเลือกวันเข้าพัก"}</strong>
+
+        <strong>
+          {admin
+            ? "วิธีจัดการปฏิทินสำหรับผู้ดูแล"
+            : "วิธีเลือกวันเข้าพัก"}
+        </strong>
+
         <br />
+
         {admin ? (
           <>
             1. คลิกวันที่สีเขียวเพื่อปิดรับจอง
             <br />
+
             2. คลิกวันที่สีเทาเพื่อเปิดรับจองอีกครั้ง
             <br />
+
             3. วันที่สีแดงคือมีลูกค้าจองแล้วและแก้ไม่ได้จากตรงนี้
           </>
         ) : (
           <>
             1. กดวันที่สีเขียวที่ต้องการเข้าพัก
             <br />
+
             2. กดวันที่สีเขียวที่ต้องการออก
             <br />
+
             3. วันที่สีแดงคือมีผู้จองแล้ว
             <br />
+
             4. วันที่สีเทาคือ 🔒 ปิดรับจอง
+            <br />
+
+            5. ราคาที่แสดงใต้วันที่คือราคาห้องพักต่อคืนสำหรับผู้เข้าพักมาตรฐาน 2 คน
           </>
         )}
+
       </div>
 
     </div>
