@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET(req: Request) {
   try {
@@ -9,7 +9,7 @@ export async function GET(req: Request) {
     const month = searchParams.get("month");
 
     // =========================================
-    // ตรวจข้อมูลที่ส่งเข้ามา
+    // ตรวจข้อมูล
     // =========================================
 
     if (!roomId) {
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
     }
 
     // =========================================
-    // ตรวจรูปแบบเดือน YYYY-MM
+    // ตรวจรูปแบบ YYYY-MM
     // =========================================
 
     if (!/^\d{4}-\d{2}$/.test(month)) {
@@ -62,22 +62,28 @@ export async function GET(req: Request) {
         : `${year}-${String(monthNumber + 1).padStart(2, "0")}-01`;
 
     // =========================================
-    // 1. ดึง Booking ของบ้านพักนี้
+    // 1. Booking ที่ยังล็อกบ้านอยู่
+    //
+    // confirmed = ล็อกตลอด
+    // pending   = ล็อก 10 นาที
     // =========================================
+
+    const pendingExpireTime = new Date(
+      Date.now() - 10 * 60 * 1000
+    ).toISOString();
 
     const {
       data: bookings,
       error: bookingError,
-    } = await supabase
+    } = await supabaseAdmin
       .from("bookings")
       .select(
-        "id, booking_code, room_id, check_in, check_out, booking_status"
+        "id, booking_code, room_id, check_in, check_out, booking_status, created_at"
       )
       .eq("room_id", roomId)
-      .in("booking_status", [
-        "pending",
-        "confirmed",
-      ])
+      .or(
+        `booking_status.eq.confirmed,and(booking_status.eq.pending,created_at.gt.${pendingExpireTime})`
+      )
       .lt("check_in", nextMonth)
       .gt("check_out", startDate);
 
@@ -97,7 +103,7 @@ export async function GET(req: Request) {
     const {
       data: blockedRows,
       error: blockedError,
-    } = await supabase
+    } = await supabaseAdmin
       .from("blocked_dates")
       .select(
         "id, room_id, blocked_date, reason"
@@ -150,7 +156,7 @@ export async function GET(req: Request) {
     }
 
     // =========================================
-    // 4. สร้างรายการวันที่ "ปิดรับจอง"
+    // 4. วันที่ Admin ปิดรับจอง
     // =========================================
 
     const blockedDates: string[] = (
@@ -172,33 +178,64 @@ export async function GET(req: Request) {
     ];
 
     // =========================================
-    // 6. ส่งข้อมูลกลับ
+    // 6. Log สำหรับตรวจสอบ
     // =========================================
 
     console.log(
-      "AVAILABILITY =",
+      "========================================="
+    );
+
+    console.log(
+      "AVAILABILITY CHECK"
+    );
+
+    console.log({
+      roomId,
+      month,
+      startDate,
+      nextMonth,
+
+      bookingCount:
+        bookings?.length ?? 0,
+
+      bookings: bookings ?? [],
+
+      bookedDates:
+        uniqueBookedDates,
+
+      blockedDates:
+        uniqueBlockedDates,
+    });
+
+    console.log(
+      "========================================="
+    );
+
+    // =========================================
+    // 7. ส่งข้อมูลกลับ
+    // =========================================
+
+    return NextResponse.json(
       {
         roomId,
         month,
-        bookedDates: uniqueBookedDates,
-        blockedDates: uniqueBlockedDates,
+
+        bookedDates:
+          uniqueBookedDates,
+
+        blockedDates:
+          uniqueBlockedDates,
+
+        blockedDetails:
+          blockedRows ?? [],
+      },
+      {
+        headers: {
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate",
+        },
       }
     );
-
-    return NextResponse.json({
-      roomId,
-
-      month,
-
-      // วันที่มีลูกค้าจอง
-      bookedDates: uniqueBookedDates,
-
-      // วันที่ Admin ปิดรับจอง
-      blockedDates: uniqueBlockedDates,
-
-      // รายละเอียดการปิดรับจอง
-      blockedDetails: blockedRows ?? [],
-    });
 
   } catch (error) {
     console.error(
@@ -208,7 +245,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json(
       {
-        error: "ไม่สามารถโหลดปฏิทินได้",
+        error:
+          "ไม่สามารถโหลดปฏิทินได้",
       },
       {
         status: 500,

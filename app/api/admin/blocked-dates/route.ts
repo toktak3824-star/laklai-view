@@ -39,34 +39,45 @@ export async function POST(req: Request) {
     // 1. ตรวจว่ามี Booking ในวันนี้หรือไม่
     // =========================================
 
-    const {
-      data: bookings,
-      error: bookingError,
-    } = await supabaseAdmin
-      .from("bookings")
-      .select(
-        `
-        id,
-        booking_code,
-        room_id,
-        check_in,
-        check_out,
-        booking_status
-        `
-      )
-      .eq("room_id", roomId)
-      .in("booking_status", [
-        "pending",
-        "confirmed",
-      ])
-      .lt(
-        "check_in",
-        blockedDate + "T23:59:59"
-      )
-      .gt(
-        "check_out",
-        blockedDate
-      );
+    // =========================================
+// ตรวจ Booking ที่ยังล็อกบ้านอยู่
+//
+// confirmed = ล็อกตลอด
+// pending   = ล็อก 10 นาที
+// =========================================
+
+const pendingExpireTime = new Date(
+  Date.now() - 10 * 60 * 1000
+).toISOString();
+
+const {
+  data: bookings,
+  error: bookingError,
+} = await supabaseAdmin
+  .from("bookings")
+  .select(
+    `
+    id,
+    booking_code,
+    room_id,
+    check_in,
+    check_out,
+    booking_status,
+    created_at
+    `
+  )
+  .eq("room_id", roomId)
+  .or(
+    `booking_status.eq.confirmed,and(booking_status.eq.pending,created_at.gt.${pendingExpireTime})`
+  )
+  .lt(
+    "check_in",
+    blockedDate + "T23:59:59"
+  )
+  .gt(
+    "check_out",
+    blockedDate
+  );
 
     if (bookingError) {
       console.error(
