@@ -61,8 +61,6 @@ export function calculatePrice(
    *
    * โปรโมชั่นใช้เฉพาะ:
    * 1 - 30 กันยายน 2026
-   *
-   * เดือนอื่น ๆ กลับไปใช้ราคาปกติ
    */
 
   const isSeptemberPromo = (date: Date) => {
@@ -98,95 +96,139 @@ export function calculatePrice(
 
   /*
    * ==========================================
+   * ราคาพิเศษตามช่วงวันที่
+   * ==========================================
+   *
+   * 5 - 7 ธันวาคม 2026
+   * บ้าน 1-3 = 2,249 บาท
+   * บ้าน 4 = 1,899 บาท
+   *
+   * 29 ธันวาคม 2026 - 2 มกราคม 2027
+   * บ้าน 1-3 = 2,399 บาท
+   * บ้าน 4 = 1,989 บาท
+   *
+   * ข้อมูลราคาจะอ่านจาก room.pricing.datePricing
+   */
+
+  const getDatePricing = (date: Date) => {
+    const datePricing = room.pricing.datePricing ?? [];
+
+    return datePricing.find((specialPrice) => {
+      const startDate = new Date(
+        `${specialPrice.startDate}T00:00:00`
+      );
+
+      const endDate = new Date(
+        `${specialPrice.endDate}T23:59:59`
+      );
+
+      return date >= startDate && date <= endDate;
+    });
+  };
+
+  /*
+   * ==========================================
    * คำนวณราคาห้องพักแต่ละคืน
    * ==========================================
    */
 
   const breakdown: PriceBreakdownItem[] =
-  stayDates.map((date) => {
-    const holiday = isHoliday(date);
+    stayDates.map((date) => {
+      const holiday = isHoliday(date);
 
-    let price: number;
+      let price: number;
 
-    /*
-     * ==========================================
-     * 1. ลูกค้า 1 คน
-     * ==========================================
-     *
-     * วัน Holiday = 1,200 บาท
-     * วันธรรมดา = 1,009 บาท
-     *
-     * กฎนี้มาก่อนโปรโมชั่นเดือนกันยายน
-     */
+      /*
+       * ==========================================
+       * 1. ลูกค้า 1 คน
+       * ==========================================
+       *
+       * วัน Holiday = 1,200 บาท
+       * วันธรรมดา = 1,009 บาท
+       *
+       * กฎนี้มาก่อนโปรโมชั่นเดือนกันยายน
+       */
 
-    if (isSingleGuest && holiday) {
-      price = 1200;
-    }
+      if (isSingleGuest && holiday) {
+        price = 1200;
+      }
 
-    else if (isSingleGuest) {
-      price = 1009;
-    }
+      else if (isSingleGuest) {
+        price = 1009;
+      }
 
-    /*
-     * ==========================================
-     * 2. โปรโมชั่นเดือนกันยายน 2026
-     * ==========================================
-     *
-     * บ้าน 1-3 = 1,699 บาท / คืน
-     * บ้าน 4 บ้านสุขใจ = 1,499 บาท / คืน
-     *
-     * ใช้เฉพาะวันที่
-     * 1-30 กันยายน 2026
-     */
+      /*
+       * ==========================================
+       * 2. โปรโมชั่นเดือนกันยายน 2026
+       * ==========================================
+       *
+       * บ้าน 1-3 = 1,699 บาท / คืน
+       * บ้าน 4 บ้านสุขใจ = 1,499 บาท / คืน
+       *
+       * ใช้เฉพาะวันที่
+       * 1-30 กันยายน 2026
+       */
 
-    else if (isSeptemberPromo(date)) {
-      price = isHouse4 ? 1499 : 1699;
-    }
+      else if (isSeptemberPromo(date)) {
+        price = isHouse4 ? 1499 : 1699;
+      }
 
-    /*
-     * ==========================================
-     * 3. บ้าน 4 ผู้ใหญ่ 4 คน
-     * ==========================================
-     */
+      /*
+       * ==========================================
+       * 3. บ้าน 4 ผู้ใหญ่ 4 คน
+       * ==========================================
+       */
 
-    else if (isHouse4FourAdults) {
-      price = 2590;
-    }
+      else if (isHouse4FourAdults) {
+        price = 2590;
+      }
 
-    /*
-     * ==========================================
-     * 4. ราคาปกติ
-     * ==========================================
-     */
+      /*
+       * ==========================================
+       * 4. ราคาพิเศษตามช่วงวันที่
+       * ==========================================
+       */
 
-    else {
-      price = holiday
-        ? room.pricing.holiday
-        : room.pricing.weekday;
-    }
+      else {
+        const specialPrice = getDatePricing(date);
 
-    /*
-     * ==========================================
-     * นับจำนวนคืน
-     * ==========================================
-     */
+        if (specialPrice) {
+          price = specialPrice.price;
+        } else {
+          /*
+           * ==========================================
+           * 5. ราคาปกติ
+           * ==========================================
+           */
 
-    if (holiday) {
-      holidayNights++;
-    } else {
-      weekdayNights++;
-    }
+          price = holiday
+            ? room.pricing.holiday
+            : room.pricing.weekday;
+        }
+      }
 
-    roomTotal += price;
+      /*
+       * ==========================================
+       * นับจำนวนคืน
+       * ==========================================
+       */
 
-    return {
-      date: formatDate(date),
-      type: holiday
-        ? ("holiday" as const)
-        : ("weekday" as const),
-      price,
-    };
-  });
+      if (holiday) {
+        holidayNights++;
+      } else {
+        weekdayNights++;
+      }
+
+      roomTotal += price;
+
+      return {
+        date: formatDate(date),
+        type: holiday
+          ? ("holiday" as const)
+          : ("weekday" as const),
+        price,
+      };
+    });
 
   const extraAdults = Math.max(
     0,

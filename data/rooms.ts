@@ -18,18 +18,35 @@ export const rooms = [
     ],
 
     pricing: {
-      weekday: 1990,
+      weekday: 1849,
       originalWeekday: 2390,
-      holiday: 2290,
+      holiday: 2099,
       originalHoliday: 2690,
       discountLabel: "ประหยัด 400 บาท",
 
+      // โปรโมชั่นเฉพาะเดือนกันยายน 2026
       promoPrice: 1699,
-promoOriginalPrice: 1990,
-promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
-promoBenefit: "เก็บเงาะทานฟรีได้เลย",
-promoStartDate: "2026-09-01",
-promoEndDate: "2026-09-30",
+      promoOriginalPrice: 1990,
+      promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
+      promoBenefit: "เก็บเงาะทานฟรีได้เลย",
+      promoStartDate: "2026-09-01",
+      promoEndDate: "2026-09-30",
+
+      // ราคาพิเศษตามช่วงวันที่
+      datePricing: [
+        {
+          startDate: "2026-12-05",
+          endDate: "2026-12-07",
+          price: 2249,
+          label: "ราคาพิเศษ 5–7 ธันวาคม 2569",
+        },
+        {
+          startDate: "2026-12-29",
+          endDate: "2027-01-02",
+          price: 2399,
+          label: "ราคาพิเศษ 29 ธันวาคม 2569 – 2 มกราคม 2570",
+        },
+      ],
     },
 
     defaultGuests: 2,
@@ -58,19 +75,36 @@ promoEndDate: "2026-09-30",
     ],
 
     pricing: {
-      weekday: 1990,
+      weekday: 1849,
       originalWeekday: 2390,
-      holiday: 2290,
+      holiday: 2099,
       originalHoliday: 2690,
       discountLabel: "ประหยัด 400 บาท",
 
-    promoPrice: 1699,
-promoOriginalPrice: 1990,
-promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
-promoBenefit: "เก็บเงาะทานฟรีได้เลย",
-promoStartDate: "2026-09-01",
-promoEndDate: "2026-09-30",
-},
+      // โปรโมชั่นเฉพาะเดือนกันยายน 2026
+      promoPrice: 1699,
+      promoOriginalPrice: 1990,
+      promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
+      promoBenefit: "เก็บเงาะทานฟรีได้เลย",
+      promoStartDate: "2026-09-01",
+      promoEndDate: "2026-09-30",
+
+      // ราคาพิเศษตามช่วงวันที่
+      datePricing: [
+        {
+          startDate: "2026-12-05",
+          endDate: "2026-12-07",
+          price: 2249,
+          label: "ราคาพิเศษ 5–7 ธันวาคม 2569",
+        },
+        {
+          startDate: "2026-12-29",
+          endDate: "2027-01-02",
+          price: 2399,
+          label: "ราคาพิเศษ 29 ธันวาคม 2569 – 2 มกราคม 2570",
+        },
+      ],
+    },
 
     defaultGuests: 2,
     maxGuests: 3,
@@ -100,19 +134,36 @@ promoEndDate: "2026-09-30",
     ],
 
     pricing: {
-      weekday: 2090,
+      weekday: 1899,
       originalWeekday: 2500,
-      holiday: 2390,
+      holiday: 2149,
       originalHoliday: 2790,
       discountLabel: "ประหยัด 400 บาท",
 
-    promoPrice: 1699,
-promoOriginalPrice: 1990,
-promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
-promoBenefit: "เก็บเงาะทานฟรีได้เลย",
-promoStartDate: "2026-09-01",
-promoEndDate: "2026-09-30",
-},
+      // โปรโมชั่นเฉพาะเดือนกันยายน 2026
+      promoPrice: 1699,
+      promoOriginalPrice: 1990,
+      promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
+      promoBenefit: "เก็บเงาะทานฟรีได้เลย",
+      promoStartDate: "2026-09-01",
+      promoEndDate: "2026-09-30",
+
+      // ราคาพิเศษตามช่วงวันที่
+      datePricing: [
+        {
+          startDate: "2026-12-05",
+          endDate: "2026-12-07",
+          price: 2249,
+          label: "ราคาพิเศษ 5–7 ธันวาคม 2569",
+        },
+        {
+          startDate: "2026-12-29",
+          endDate: "2027-01-02",
+          price: 2399,
+          label: "ราคาพิเศษ 29 ธันวาคม 2569 – 2 มกราคม 2570",
+        },
+      ],
+    },
 
     defaultGuests: 2,
     maxGuests: 3,
@@ -130,7 +181,7 @@ promoEndDate: "2026-09-30",
       "บ้านพักที่อบอุ่น เหมาะสำหรับคู่รักและครอบครัว เงียบสงบและเป็นส่วนตัว",
     cover: "/images/house4/01.jpg",
 
-    images: Array.from({ length: 19}, (_, i) => {
+    images: Array.from({ length: 19 }, (_, i) => {
       const number = String(i + 1).padStart(2, "0");
       return `/images/house4/${number}.jpg`;
     }),
@@ -138,19 +189,37 @@ promoEndDate: "2026-09-30",
     videos: [],
 
     pricing: {
-      weekday: 1699,
+      weekday: 1614,
       originalWeekday: 2100,
-      holiday: 1890,
+      holiday: 1869,
       originalHoliday: 2290,
       discountLabel: "ประหยัด 400 บาท",
 
-    promoPrice: 1699,
-promoOriginalPrice: 1990,
-promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
-promoBenefit: "เก็บเงาะทานฟรีได้เลย",
-promoStartDate: "2026-09-01",
-promoEndDate: "2026-09-30",
-},
+      // โปรโมชั่นเฉพาะเดือนกันยายน 2026
+      promoPrice: 1699,
+      promoOriginalPrice: 1990,
+      promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
+      promoBenefit: "เก็บเงาะทานฟรีได้เลย",
+      promoStartDate: "2026-09-01",
+      promoEndDate: "2026-09-30",
+
+      // ราคาพิเศษตามช่วงวันที่
+      datePricing: [
+        {
+          startDate: "2026-12-05",
+          endDate: "2026-12-07",
+          price: 1899,
+          label: "ราคาพิเศษ 5–7 ธันวาคม 2569",
+        },
+        {
+          startDate: "2026-12-29",
+          endDate: "2027-01-02",
+          price: 1989,
+          label: "ราคาพิเศษ 29 ธันวาคม 2569 – 2 มกราคม 2570",
+        },
+      ],
+    },
+
     defaultGuests: 2,
     maxGuests: 4,
     extraAdultPrice: 500,
