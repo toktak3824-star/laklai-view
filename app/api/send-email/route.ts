@@ -28,6 +28,12 @@ export async function POST(req: Request) {
   natureExperienceDate,
   natureExperienceParticipants,
   natureExperienceTotal,
+
+  // =========================================
+  // อาหารเย็นสั่งล่วงหน้า
+  // =========================================
+  dinnerItems,
+  dinnerTotal,
 } = await req.json();
 
     const customerEmailAddress = String(email ?? "").trim();
@@ -149,6 +155,68 @@ const natureExperienceText =
       </p>
     `
     : "";
+
+    const safeDinnerItems = Array.isArray(dinnerItems)
+      ? dinnerItems.filter(
+          (item: { quantity?: number | string }) =>
+            item &&
+            Number(item.quantity) > 0
+        )
+      : [];
+
+    const safeDinnerTotal = Number(dinnerTotal ?? 0);
+
+    const dinnerText =
+      safeDinnerItems.length > 0
+        ? `
+          <hr/>
+
+          <h3>🍽️ อาหารเย็นสั่งล่วงหน้า</h3>
+
+          <p>
+            รายการอาหารสำหรับวันเช็คอิน
+          </p>
+
+          <ul>
+            ${safeDinnerItems
+              .map(
+                (item: { name?: string; price?: number | string; quantity?: number | string }) => `
+                  <li>
+                    ${item.name} × ${Number(item.quantity)}
+                    = ฿${(
+                      Number(item.price) *
+                      Number(item.quantity)
+                    ).toLocaleString("th-TH")}
+                  </li>
+                `
+              )
+              .join("")}
+          </ul>
+
+          <p style="font-size: 18px;">
+            <b>
+              รวมค่าอาหารเย็น:
+              ฿${safeDinnerTotal.toLocaleString("th-TH")}
+            </b>
+          </p>
+
+          <div style="background:#fff7ed;padding:14px;border-radius:10px;">
+            <p>
+              💰 <b>ค่าอาหารเย็นยังไม่รวมในยอดโอนค่าที่พัก</b>
+            </p>
+            <p>
+              กรุณาชำระค่าอาหารในวันเช็คอิน
+            </p>
+            <p>
+              🕠 จัดส่งอาหารเย็นเวลา 17:30–18:20 น.
+            </p>
+            <p>
+              หากต้องการเปลี่ยนแปลงรายการอาหาร
+              กรุณาติดต่อหลักลาย View โดยตรง
+            </p>
+          </div>
+        `
+        : "";
 
     const extraBedText = needsExtraBed
       ? "🛏️ ต้องเตรียมที่นอนเสริม"
@@ -282,6 +350,7 @@ const natureExperienceText =
             </p>
 
 ${natureExperienceText}
+${dinnerText}
             <hr/>
 
             <h3>
@@ -471,6 +540,7 @@ ${natureExperienceText}
           </div>
 
 ${natureExperienceText}
+${dinnerText}
           <hr/>
 
           <h3>

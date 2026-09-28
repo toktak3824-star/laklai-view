@@ -1,6 +1,7 @@
 "use client";
 
 import { calculatePrice } from "@/utils/calculatePrice";
+import { DINNER_MENU } from "@/data/dinnerMenu";
 import { useMemo, useState } from "react";
 import type { Room } from "@/types/room";
 import BookingPolicy from "@/components/BookingPolicy";
@@ -82,6 +83,48 @@ export default function BookingForm({ room }: Props) {
   const [email, setEmail] = useState("");
 
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
+
+  // =========================================
+  // อาหารเย็นสั่งล่วงหน้า
+  // เก็บเฉพาะ id + จำนวน แล้วคำนวณราคาจากเมนูกลาง
+  // =========================================
+  const [dinnerQuantities, setDinnerQuantities] = useState<Record<string, number>>({});
+
+  const dinnerItems = useMemo(
+    () =>
+      DINNER_MENU
+        .map((item) => ({
+          ...item,
+          quantity: Math.max(0, Math.floor(dinnerQuantities[item.id] ?? 0)),
+        }))
+        .filter((item) => item.quantity > 0),
+    [dinnerQuantities]
+  );
+
+  const dinnerTotal = useMemo(
+    () =>
+      dinnerItems.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      ),
+    [dinnerItems]
+  );
+
+  const setDinnerQuantity = (id: string, quantity: number) => {
+    const safeQuantity = Math.max(0, Math.min(20, Math.floor(quantity || 0)));
+
+    setDinnerQuantities((current) => {
+      const next = { ...current };
+
+      if (safeQuantity <= 0) {
+        delete next[id];
+      } else {
+        next[id] = safeQuantity;
+      }
+
+      return next;
+    });
+  };
 const [isSubmitting, setIsSubmitting] = useState(false);
 
 // =========================================
@@ -422,6 +465,30 @@ const totalPrice =
         alert("กรุณากรอกเบอร์โทรศัพท์");
         setIsSubmitting(false);
         return;
+      }
+
+      // =========================================
+      // ตรวจสอบการสั่งอาหารเย็นล่วงหน้า
+      // ต้องสั่งอย่างน้อย 1 วันก่อนวันเช็คอิน
+      // =========================================
+      if (dinnerItems.length > 0) {
+        const tomorrow = new Date();
+        tomorrow.setHours(0, 0, 0, 0);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const minDinnerCheckIn = tomorrow
+          .toISOString()
+          .split("T")[0];
+
+        if (checkIn < minDinnerCheckIn) {
+          alert(
+            "อาหารเย็นต้องสั่งล่วงหน้าอย่างน้อย 1 วันก่อนวันเช็คอิน\n\n" +
+              "กรุณาเลือกวันเช็คอินที่ห่างจากวันนี้อย่างน้อย 1 วัน " +
+              "หรือยกเลิกรายการอาหารเย็น"
+          );
+          setIsSubmitting(false);
+          return;
+        }
       }
 // =========================================
 // ตรวจสอบกิจกรรมวิถีบ้านป่า
@@ -771,6 +838,14 @@ if (natureExperienceSelected) {
   payment_status: "waiting",
   slip_url: "",
   booking_code: bookingCode,
+
+  dinner_items: dinnerItems.map((item) => ({
+    id: item.id,
+    name: item.name,
+    price: item.price,
+    quantity: item.quantity,
+  })),
+  dinner_total: dinnerTotal,
 }),
 });
 
@@ -806,9 +881,7 @@ const booking = result.booking;
                 "application/json",
             },
             body: JSON.stringify({
-              email:
-                customerEmail,
-              customerEmail,
+              email: customerEmail,
               guestName,
               roomName:
                 room.title,
@@ -834,6 +907,9 @@ natureExperienceTotal:
   natureExperienceSelected
     ? natureExperienceTotal
     : 0,
+
+              dinnerItems,
+              dinnerTotal,
             }),
           }
         );
@@ -1240,8 +1316,119 @@ natureExperienceTotal:
           </div>
 
 {/* =========================================
-    NATURE EXPERIENCE PACKAGE
+    DINNER PRE-ORDER
 ========================================= */}
+<div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50">
+  <div className="bg-amber-900 px-5 py-4 text-white">
+    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200">
+      LAKLAI VIEW DINNER
+    </p>
+    <h3 className="mt-1 text-xl font-bold">
+      🍽️ สั่งอาหารเย็นล่วงหน้า
+    </h3>
+    <p className="mt-1 text-sm leading-6 text-amber-100">
+      สำหรับผู้เข้าพักที่จองบ้านพักเท่านั้น
+      และต้องสั่งอาหารเย็นไว้ล่วงหน้า
+    </p>
+  </div>
+
+  <div className="space-y-4 px-5 py-5">
+    <div className="rounded-xl border border-amber-200 bg-white p-4 text-sm leading-6 text-stone-700">
+      <p>🍽️ <b>จัดส่งอาหารเย็น ที่บ้านพัก หรือต้องการทานที่ร้านกาแฟ:</b> 17:30–18:45 น.</p>
+      <p>💰 <b>การชำระเงิน (หากจอง &quot;วิถีบ้านป่า&quot; ไม่ต้องสั่งอาหารเย็น):</b> ชำระค่าอาหารในวันเช็คอิน</p>
+      <p>📝 หากต้องการเปลี่ยนแปลงรายการ กรุณาติดต่อหลักลาย View โดยตรง</p>
+    </div>
+
+    <div className="space-y-3">
+      {DINNER_MENU.map((item) => {
+        const quantity = dinnerQuantities[item.id] ?? 0;
+
+        return (
+          <div
+            key={item.id}
+            className="rounded-xl border border-stone-200 bg-white p-4"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="font-semibold text-stone-800">
+                  {item.name}
+                </p>
+                <p className="mt-1 text-sm text-amber-700">
+                  ฿{item.price.toLocaleString("th-TH")} / รายการ
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDinnerQuantity(item.id, quantity - 1)
+                  }
+                  disabled={quantity <= 0}
+                  className="h-10 w-10 rounded-lg border border-stone-300 bg-white text-lg font-bold text-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label={`ลดจำนวน ${item.name}`}
+                >
+                  −
+                </button>
+
+                <span className="flex h-10 min-w-10 items-center justify-center rounded-lg bg-amber-50 px-3 font-bold text-stone-800">
+                  {quantity}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDinnerQuantity(item.id, quantity + 1)
+                  }
+                  disabled={quantity >= 20}
+                  className="h-10 w-10 rounded-lg bg-amber-700 text-lg font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label={`เพิ่มจำนวน ${item.name}`}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {quantity > 0 && (
+              <p className="mt-2 text-right text-sm font-semibold text-amber-800">
+                ฿{(item.price * quantity).toLocaleString("th-TH")}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+
+    {dinnerItems.length > 0 && (
+      <div className="rounded-xl border-2 border-amber-300 bg-white p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-bold text-amber-900">
+              🍽️ รวมค่าอาหารเย็น
+            </p>
+            <p className="mt-1 text-xs text-stone-500">
+              ยังไม่รวมในยอดที่ต้องโอนตอนจอง
+            </p>
+          </div>
+          <p className="text-2xl font-bold text-amber-700">
+            ฿{dinnerTotal.toLocaleString("th-TH")}
+          </p>
+        </div>
+        <p className="mt-3 text-xs leading-5 text-stone-500">
+          ชำระค่าอาหารกับที่พักในวันเช็คอิน
+        </p>
+      </div>
+    )}
+
+    <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-xs leading-6 text-stone-600">
+      <p>🍳 อาหารเช้าให้บริการเวลา 07:30–09:45 น. ที่ร้านกาแฟ Laklai View</p>
+      <p>🚫 ไม่อนุญาตให้นำเตาปิ้งย่างหรือหม้อไฟฟ้าเข้ามาประกอบอาหาร</p>
+      <p>🚫 ไม่อนุญาตให้รับประทานอาหารภายในห้องพัก กรุณารับประทานด้านนอก</p>
+      <p>🍺 หากนำเครื่องดื่มแอลกอฮอล์มาเอง กรุณานำขวดแก้วกลับไปด้วย เนื่องจากพื้นที่ไม่มีจุดทิ้งขวดแก้ว</p>
+    </div>
+  </div>
+</div>
+
 
 <div>
   <div className="overflow-hidden rounded-2xl border border-green-200 bg-green-50">
@@ -1588,6 +1775,24 @@ natureExperienceTotal:
 
     </div>
   )}
+
+    {dinnerItems.length > 0 && (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold text-amber-900">
+              🍽️ อาหารเย็นสั่งล่วงหน้า
+            </p>
+            <p className="mt-1 text-xs text-stone-500">
+              ชำระในวันเช็คอิน — ไม่รวมในยอดโอน
+            </p>
+          </div>
+          <span className="shrink-0 font-bold text-amber-700">
+            ฿{dinnerTotal.toLocaleString("th-TH")}
+          </span>
+        </div>
+      </div>
+    )}
 
     <div className="flex items-center justify-between gap-4 border-t border-green-200 pt-4">
 

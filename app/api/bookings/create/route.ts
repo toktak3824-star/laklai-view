@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 import { rooms } from "@/data/rooms";
 import { calculatePrice } from "@/utils/calculatePrice";
+import { DINNER_MENU } from "@/data/dinnerMenu";
 import {
   calculateNatureExperienceTotal,
   isNatureExperienceAvailable,
@@ -252,6 +253,88 @@ export async function POST(req: Request) {
       bookingResult.grandTotal;
 
     // =========================================
+    // 7.1 ตรวจสอบอาหารเย็นจาก Server
+    // ราคาอ้างอิงจากเมนูกลางเท่านั้น
+    // ไม่เชื่อราคา/ยอดรวมจาก Browser
+    // =========================================
+
+    const rawDinnerItems = Array.isArray(data.dinner_items)
+      ? data.dinner_items
+      : [];
+
+    const dinnerItems: Array<{
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}> = rawDinnerItems.flatMap(
+  (rawItem: { id?: string | number; quantity?: number | string }) => {
+    const menuItem = DINNER_MENU.find(
+      (item) => item.id === String(rawItem?.id ?? "")
+    );
+
+    const quantity = Math.floor(
+      Number(rawItem?.quantity ?? 0)
+    );
+
+    if (!menuItem || quantity <= 0) {
+      return [];
+    }
+
+    return [
+      {
+        id: menuItem.id,
+        name: menuItem.name,
+        price: menuItem.price,
+        quantity: Math.min(quantity, 20),
+      },
+    ];
+  }
+);
+
+    const dinnerTotal = dinnerItems.reduce(
+      (sum, item) =>
+        sum + item.price * item.quantity,
+      0
+    );
+
+    // ต้องสั่งอาหารอย่างน้อย 1 วันก่อนเช็คอิน
+    if (dinnerItems.length > 0) {
+      const bangkokToday = new Intl.DateTimeFormat(
+        "en-CA",
+        {
+          timeZone: "Asia/Bangkok",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }
+      ).format(new Date());
+
+      const tomorrow = new Date(
+        `${bangkokToday}T00:00:00Z`
+      );
+      tomorrow.setUTCDate(
+        tomorrow.getUTCDate() + 1
+      );
+
+      const minDinnerCheckIn =
+        tomorrow.toISOString().split("T")[0];
+
+      if (data.check_in < minDinnerCheckIn) {
+        return NextResponse.json(
+          {
+            error:
+              "อาหารเย็นต้องสั่งล่วงหน้าอย่างน้อย 1 วันก่อนวันเช็คอิน",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // ยืนยันชนิดข้อมูลให้เป็น array ปลอดภัยสำหรับฐานข้อมูล
+    const safeDinnerItems = dinnerItems;
+
+    // =========================================
     // 8. ตรวจสอบ "วิถีบ้านป่า"
     // =========================================
 
@@ -466,6 +549,14 @@ export async function POST(req: Request) {
 
       nature_experience_total:
         natureExperienceTotal,
+
+      // =====================================
+      // อาหารเย็นสั่งล่วงหน้า
+      // ไม่รวมใน total_price
+      // =====================================
+
+      dinner_items: safeDinnerItems,
+      dinner_total: dinnerTotal,
     };
 
     // =========================================
