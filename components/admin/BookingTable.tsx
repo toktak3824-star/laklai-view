@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 export default function BookingTable() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
 
   useEffect(() => {
     loadBookings();
@@ -36,7 +36,7 @@ const [bookings, setBookings] = useState<any[]>([]);
   // =========================================
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function GuestDetails({ booking }: { booking: any }) {
+  function GuestDetails({ booking }: { booking: any }) {
     const adults = Number(booking.adults ?? 0);
 
     const childAges: number[] = Array.isArray(booking.child_ages)
@@ -138,6 +138,78 @@ function GuestDetails({ booking }: { booking: any }) {
     );
   }
 
+  // =========================================
+  // แสดงอาหารเย็นที่ลูกค้าสั่งล่วงหน้า
+  // =========================================
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function DinnerDetails({ booking }: { booking: any }) {
+    const dinnerItems = Array.isArray(booking.dinner_items)
+      ? booking.dinner_items
+      : [];
+
+    if (dinnerItems.length === 0) {
+      return (
+        <span className="text-sm text-stone-400">
+          ไม่ได้สั่งล่วงหน้า
+        </span>
+      );
+    }
+
+    return (
+      <div className="min-w-[230px] rounded-xl bg-orange-50 p-3 text-sm">
+        <div className="mb-2 font-bold text-orange-800">
+          🍽️ อาหารเย็นสั่งล่วงหน้า
+        </div>
+
+        <div className="space-y-2">
+          {dinnerItems.map(
+            (
+              item: {
+                id?: string | number;
+                name?: string;
+                quantity?: number | string;
+                price?: number | string;
+              },
+              index: number
+            ) => {
+              const quantity = Number(item.quantity ?? 0);
+              const price = Number(item.price ?? 0);
+
+              return (
+                <div
+                  key={`${item.id ?? "dinner"}-${index}`}
+                  className="border-b border-orange-100 pb-2 last:border-b-0 last:pb-0"
+                >
+                  <div className="font-semibold text-stone-800">
+                    {item.name ?? "ไม่ระบุชื่ออาหาร"}
+                  </div>
+
+                  <div className="text-stone-600">
+                    จำนวน {quantity} ที่
+                  </div>
+
+                  {price > 0 && (
+                    <div className="text-xs text-stone-500">
+                      ฿{price.toLocaleString()} / ที่
+                    </div>
+                  )}
+                </div>
+              );
+            }
+          )}
+        </div>
+
+        <div className="mt-3 border-t border-orange-200 pt-2 font-bold text-orange-800">
+          รวมค่าอาหาร: ฿
+          {Number(
+            booking.dinner_total ?? 0
+          ).toLocaleString()}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-10 overflow-x-auto rounded-2xl bg-stone-50 p-6 shadow">
 
@@ -145,7 +217,7 @@ function GuestDetails({ booking }: { booking: any }) {
         📋 รายการจองทั้งหมด
       </h2>
 
-      <table className="w-full min-w-[1200px] text-stone-800">
+      <table className="w-full min-w-[1450px] text-stone-800">
 
         <thead>
           <tr className="border-b border-stone-300">
@@ -167,16 +239,20 @@ function GuestDetails({ booking }: { booking: any }) {
             </th>
 
             <th className="text-left">
-  วันที่
-</th>
+              วันที่
+            </th>
 
-<th className="text-left">
-  วิถีบ้านป่า
-</th>
+            <th className="text-left">
+              วิถีบ้านป่า
+            </th>
 
-<th className="text-left">
-  ยอดเงิน
-</th>
+            <th className="text-left">
+              🍽️ อาหารล่วงหน้า
+            </th>
+
+            <th className="text-left">
+              ยอดเงิน
+            </th>
 
             <th className="text-left">
               สลิป
@@ -229,54 +305,62 @@ function GuestDetails({ booking }: { booking: any }) {
               </td>
 
               {/* วันที่ */}
-<td>
-  <div>
-    {booking.check_in}
-  </div>
+              <td>
+                <div>
+                  {booking.check_in}
+                </div>
 
-  <div>
-    ถึง
-  </div>
+                <div>
+                  ถึง
+                </div>
 
-  <div>
-    {booking.check_out}
-  </div>
-</td>
+                <div>
+                  {booking.check_out}
+                </div>
+              </td>
 
-{/* วิถีบ้านป่า */}
-<td>
-  {booking.nature_experience_selected &&
-  Number(booking.nature_experience_participants ?? 0) > 0 ? (
-    <div className="min-w-[190px] rounded-xl bg-green-50 p-3 text-sm">
-      <div className="font-bold text-green-800">
-        🌿 วิถีบ้านป่า
-      </div>
+              {/* วิถีบ้านป่า */}
+              <td>
+                {booking.nature_experience_selected &&
+                Number(booking.nature_experience_participants ?? 0) > 0 ? (
+                  <div className="min-w-[190px] rounded-xl bg-green-50 p-3 text-sm">
+                    <div className="font-bold text-green-800">
+                      🌿 วิถีบ้านป่า
+                    </div>
 
-      <div className="mt-1 text-stone-700">
-        📅 {booking.nature_experience_date ?? "-"}
-      </div>
+                    <div className="mt-1 text-stone-700">
+                      📅 {booking.nature_experience_date ?? "-"}
+                    </div>
 
-      <div className="text-stone-700">
-        👥 {Number(
-          booking.nature_experience_participants ?? 0
-        )} คน
-      </div>
+                    <div className="text-stone-700">
+                      👥{" "}
+                      {Number(
+                        booking.nature_experience_participants ?? 0
+                      )}{" "}
+                      คน
+                    </div>
 
-      <div className="font-semibold text-green-700">
-        💰 ฿{Number(
-          booking.nature_experience_total ?? 0
-        ).toLocaleString()}
-      </div>
-    </div>
-  ) : (
-    <span className="text-sm text-stone-400">
-      ไม่ได้เลือก
-    </span>
-  )}
-</td>
+                    <div className="font-semibold text-green-700">
+                      💰 ฿
+                      {Number(
+                        booking.nature_experience_total ?? 0
+                      ).toLocaleString()}
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-sm text-stone-400">
+                    ไม่ได้เลือก
+                  </span>
+                )}
+              </td>
 
-{/* ยอดเงิน */}
-<td className="font-semibold">
+              {/* อาหารเย็นสั่งล่วงหน้า */}
+              <td>
+                <DinnerDetails booking={booking} />
+              </td>
+
+              {/* ยอดเงิน */}
+              <td className="font-semibold">
                 ฿
                 {Number(
                   booking.total_price
@@ -375,74 +459,74 @@ function GuestDetails({ booking }: { booking: any }) {
 
                     {/* ยกเลิก */}
                     <button
-  type="button"
-  onClick={async () => {
-    const reason = window.prompt(
-      "กรุณาระบุเหตุผลในการยกเลิกการจอง\n\n" +
-      "ตัวอย่าง:\n" +
-      "1. หลักฐานการโอนเงินไม่ครบ\n" +
-      "2. พบความผิดปกติของการโอนเงิน\n" +
-      "3. จำนวนผู้เข้าพักไม่ตรงกับที่แจ้ง\n" +
-      "4. จำนวนผู้เข้าพักเกินความสามารถของบ้านพัก\n" +
-      "5. อื่น ๆ"
-    );
+                      type="button"
+                      onClick={async () => {
+                        const reason = window.prompt(
+                          "กรุณาระบุเหตุผลในการยกเลิกการจอง\n\n" +
+                          "ตัวอย่าง:\n" +
+                          "1. หลักฐานการโอนเงินไม่ครบ\n" +
+                          "2. พบความผิดปกติของการโอนเงิน\n" +
+                          "3. จำนวนผู้เข้าพักไม่ตรงกับที่แจ้ง\n" +
+                          "4. จำนวนผู้เข้าพักเกินความสามารถของบ้านพัก\n" +
+                          "5. อื่น ๆ"
+                        );
 
-    if (!reason || !reason.trim()) {
-      alert("กรุณาระบุเหตุผลก่อนยกเลิกการจอง");
-      return;
-    }
+                        if (!reason || !reason.trim()) {
+                          alert("กรุณาระบุเหตุผลก่อนยกเลิกการจอง");
+                          return;
+                        }
 
-    const confirmed = window.confirm(
-      `ยืนยันการยกเลิกการจอง ${booking.booking_code} หรือไม่?\n\n` +
-      `เหตุผล:\n${reason}`
-    );
+                        const confirmed = window.confirm(
+                          `ยืนยันการยกเลิกการจอง ${booking.booking_code} หรือไม่?\n\n` +
+                          `เหตุผล:\n${reason}`
+                        );
 
-    if (!confirmed) {
-      return;
-    }
+                        if (!confirmed) {
+                          return;
+                        }
 
-    try {
-      const response = await fetch("/api/admin/cancel", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: booking.id,
-          reason: reason.trim(),
-        }),
-      });
+                        try {
+                          const response = await fetch("/api/admin/cancel", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              id: booking.id,
+                              reason: reason.trim(),
+                            }),
+                          });
 
-      const data = await response.json();
+                          const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(
-          data.error || "ไม่สามารถยกเลิกการจองได้"
-        );
-      }
+                          if (!response.ok) {
+                            throw new Error(
+                              data.error || "ไม่สามารถยกเลิกการจองได้"
+                            );
+                          }
 
-      alert(
-        "ยกเลิกการจองเรียบร้อยแล้ว\n" +
-        "ระบบกำลังส่งอีเมลแจ้งลูกค้า"
-      );
+                          alert(
+                            "ยกเลิกการจองเรียบร้อยแล้ว\n" +
+                            "ระบบกำลังส่งอีเมลแจ้งลูกค้า"
+                          );
 
-      await loadBookings();
+                          await loadBookings();
 
-    } catch (error) {
-      console.error(
-        "CANCEL BOOKING ERROR =",
-        error
-      );
+                        } catch (error) {
+                          console.error(
+                            "CANCEL BOOKING ERROR =",
+                            error
+                          );
 
-      alert(
-        "ไม่สามารถยกเลิกการจองได้ กรุณาลองใหม่อีกครั้ง"
-      );
-    }
-  }}
-  className="rounded bg-red-600 px-3 py-2 text-white hover:bg-red-700"
->
-  ยกเลิก
-</button>
+                          alert(
+                            "ไม่สามารถยกเลิกการจองได้ กรุณาลองใหม่อีกครั้ง"
+                          );
+                        }
+                      }}
+                      className="rounded bg-red-600 px-3 py-2 text-white hover:bg-red-700"
+                    >
+                      ยกเลิก
+                    </button>
 
                   </div>
                 )}
