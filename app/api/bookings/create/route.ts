@@ -298,38 +298,6 @@ export async function POST(req: Request) {
       0
     );
 
-    // ต้องสั่งอาหารอย่างน้อย 1 วันก่อนเช็คอิน
-    if (dinnerItems.length > 0) {
-      const bangkokToday = new Intl.DateTimeFormat(
-        "en-CA",
-        {
-          timeZone: "Asia/Bangkok",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }
-      ).format(new Date());
-
-      const tomorrow = new Date(
-        `${bangkokToday}T00:00:00Z`
-      );
-      tomorrow.setUTCDate(
-        tomorrow.getUTCDate() + 1
-      );
-
-      const minDinnerCheckIn =
-        tomorrow.toISOString().split("T")[0];
-
-      if (data.check_in < minDinnerCheckIn) {
-        return NextResponse.json(
-          {
-            error:
-              "อาหารเย็นต้องสั่งล่วงหน้าอย่างน้อย 1 วันก่อนวันเช็คอิน",
-          },
-          { status: 400 }
-        );
-      }
-    }
 
     // ยืนยันชนิดข้อมูลให้เป็น array ปลอดภัยสำหรับฐานข้อมูล
     const safeDinnerItems = dinnerItems;
