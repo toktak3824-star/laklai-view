@@ -1,7 +1,7 @@
 "use client";
 
 import { rooms } from "@/data/rooms";
-import { getNightlyPrice } from "@/utils/getNightlyPrice";
+import { calculatePrice } from "@/utils/calculatePrice";
 import { useEffect, useMemo, useState } from "react";
 
 type BlockedDate = string;
@@ -68,10 +68,22 @@ export default function AvailabilityCalendar({
    */
 
   const getPriceForDate = (dateString: string) => {
-    if (!room) return 0;
+  if (!room) return 0;
 
-    return getNightlyPrice(room, dateString);
-  };
+  const checkIn = new Date(`${dateString}T00:00:00`);
+  const checkOut = new Date(checkIn);
+
+  checkOut.setDate(checkOut.getDate() + 1);
+
+  return calculatePrice(room, {
+    roomId: room.id,
+    checkIn,
+    checkOut,
+    adults: 2,
+    children: 0,
+    childAges: [],
+  }).grandTotal;
+};
 
   const today = useMemo(() => {
     const now = new Date();

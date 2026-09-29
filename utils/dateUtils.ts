@@ -2,9 +2,27 @@ import { holidays } from "@/data/holidays";
 
 /**
  * แปลงวันที่เป็น YYYY-MM-DD
+ *
+ * ใช้เวลาท้องถิ่น (Local Time)
+ * ไม่ใช้ toISOString()
+ *
+ * เหตุผล:
+ * ระบบจองใช้วันที่ตามปฏิทินประเทศไทย
+ * หากใช้ toISOString() วันที่เวลา 00:00
+ * ในประเทศไทย (UTC+7) จะถูกเลื่อนกลับไปเป็นวันก่อนหน้า
+ *
+ * ตัวอย่าง:
+ * 26/10/2026 เวลาไทย
+ * จะต้องได้ 2026-10-26
+ *
+ * ไม่ใช่ 2026-10-25
  */
 export function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0];
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 /**
