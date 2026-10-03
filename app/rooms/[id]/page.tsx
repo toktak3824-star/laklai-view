@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { rooms } from "@/data/rooms";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import BookingForm from "@/components/BookingForm";
+import RoomDetailGallery from "@/components/RoomDetailGallery";
 
 type Props = {
   params: Promise<{
@@ -267,44 +267,36 @@ export default async function RoomDetailPage({
         </section>
 
         {/* =====================================================
-            PHOTO GALLERY
-        ===================================================== */}
+    PHOTO GALLERY
+===================================================== */}
 
-        <section
-          id="details"
-          className="mb-14 mt-14 scroll-mt-24"
-        >
-          <div className="mb-8">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-[0.3em] text-green-400">
-              LAKLAI VIEW
-            </p>
+<section
+  id="details"
+  className="mb-14 mt-14 scroll-mt-24"
+>
+  <div className="mb-8">
+    <p className="mb-2 text-sm font-semibold uppercase tracking-[0.3em] text-green-400">
+      LAKLAI VIEW
+    </p>
 
-            <h2 className="text-3xl font-bold text-amber-50 sm:text-4xl">
-              บรรยากาศบ้านพัก
-            </h2>
+    <h2 className="text-3xl font-bold text-amber-50 sm:text-4xl">
+      บรรยากาศบ้านพัก
+    </h2>
 
-            <p className="mt-3 text-stone-400">
-              ชมบรรยากาศ ห้องพัก และมุมต่าง ๆ ภายในบ้าน
-            </p>
-          </div>
+    <p className="mt-3 text-stone-400">
+      ชมบรรยากาศ ห้องพัก และมุมต่าง ๆ ภายในบ้าน
+    </p>
+  </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {room.images.map((image) => (
-              <div
-                key={image}
-                className="relative aspect-[4/3] overflow-hidden rounded-2xl"
-              >
-                <Image
-                  src={image}
-                  alt={`${room.title} - Laklai View ที่พักบนเส้นทางปัว–บ่อเกลือ จังหวัดน่าน`}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                  className="object-cover transition duration-300 hover:scale-105"
-                />
-              </div>
-            ))}
-          </div>
-        </section>
+  {/* ==================================================
+      ROOM IMAGE SLIDER
+  ================================================== */}
+
+  <RoomDetailGallery
+    images={room.images}
+    title={room.title}
+  />
+</section>
 
         {/* =====================================================
             VIDEO GALLERY

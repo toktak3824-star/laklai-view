@@ -7,14 +7,14 @@ export const rooms = [
       "บ้านพักท่ามกลางธรรมชาติ พร้อมวิวภูเขาและสระน้ำแร่ธรรมชาติไว้แช่ส่วนตัว",
     cover: "/images/house1/01.jpg",
 
-    images: Array.from({ length: 19 }, (_, i) => {
+    images: Array.from({ length: 31 }, (_, i) => {
       const number = String(i + 1).padStart(2, "0");
       return `/images/house1/${number}.jpg`;
     }),
 
     videos: [
-      "/images/house1/20.mp4",
-      "/images/house1/21.mp4",
+      "/images/house1/32.mp4",
+      "/images/house1/33.mp4",
     ],
 
     pricing: {
@@ -91,13 +91,13 @@ export const rooms = [
       "บ้านพักสำหรับการพักผ่อนอย่างแท้จริง เงียบสงบ เป็นส่วนตัว พร้อมวิวภูเขาและสระน้ำแร่ธรรมชาติ",
     cover: "/images/house2/01.jpg",
 
-    images: Array.from({ length: 19 }, (_, i) => {
+    images: Array.from({ length: 29 }, (_, i) => {
       const number = String(i + 1).padStart(2, "0");
       return `/images/house2/${number}.jpg`;
     }),
 
     videos: [
-      "/images/house2/20.mp4",
+      "/images/house2/30.mp4",
     ],
 
     pricing: {
@@ -174,15 +174,15 @@ export const rooms = [
       "บ้านพักวิวภูเขา พร้อมสระน้ำแร่ธรรมชาติ และมุมพักผ่อนส่วนตัว",
     cover: "/images/house3/01.jpg",
 
-    images: Array.from({ length: 18 }, (_, i) => {
+    images: Array.from({ length: 28 }, (_, i) => {
       const number = String(i + 1).padStart(2, "0");
       return `/images/house3/${number}.jpg`;
     }),
 
     videos: [
-      "/images/house3/19.mp4",
-      "/images/house3/20.mp4",
-      "/images/house3/21.mp4",
+      "/images/house3/29.mp4",
+      "/images/house3/30.mp4",
+      "/images/house3/31.mp4",
     ],
 
     pricing: {
@@ -259,7 +259,7 @@ export const rooms = [
       "บ้านพักที่อบอุ่น เหมาะสำหรับคู่รักและครอบครัว เงียบสงบและเป็นส่วนตัว",
     cover: "/images/house4/01.jpg",
 
-    images: Array.from({ length: 19 }, (_, i) => {
+    images: Array.from({ length: 23 }, (_, i) => {
       const number = String(i + 1).padStart(2, "0");
       return `/images/house4/${number}.jpg`;
     }),

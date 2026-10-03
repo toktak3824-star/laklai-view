@@ -46,7 +46,7 @@ export default function Rooms() {
               id={room.id}
               title={room.title}
               subtitle={room.subtitle}
-              image={room.cover}
+              images={room.images}
               description={room.description}
               price={room.pricing.weekday}
               originalPrice={room.pricing.originalWeekday}
