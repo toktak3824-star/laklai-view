@@ -189,14 +189,14 @@ export default function RoomDetailGallery({
           MAIN IMAGE
       ================================================== */}
 
-      <div className="relative aspect-[4/3] w-full bg-stone-900 sm:aspect-[16/10]">
+      <div className="relative aspect-[4/3] w-full bg-black sm:aspect-[16/10]">
         <Image
           src={currentImageSrc}
           alt={`${title} - Laklai View ที่พักบนเส้นทางปัว–บ่อเกลือ จังหวัดน่าน`}
           fill
           priority={currentImage === 0}
           sizes="(max-width: 768px) 100vw, 1200px"
-          className="object-cover"
+          className="object-contain"
         />
 
         {/* ==================================================

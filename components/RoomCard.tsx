@@ -190,7 +190,7 @@ export default function RoomCard({
             alt={`${title} - Laklai View ที่พักบนเส้นทางปัว–บ่อเกลือ จังหวัดน่าน`}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover transition duration-500"
+            className="object-contain transition duration-500"
             priority={currentImage === 0}
           />
         ) : (
