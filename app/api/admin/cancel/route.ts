@@ -437,22 +437,20 @@ ${natureExperienceText}
     // 7. ตรวจสอบผลการส่งอีเมล
     // =========================================
 
-    if (emailError) {
+        if (emailError) {
       console.error(
         "CANCEL EMAIL ERROR =",
         emailError
       );
 
-      return NextResponse.json(
-        {
-          error:
-            "ยกเลิกการจองสำเร็จ แต่ไม่สามารถส่งอีเมลได้",
-          detail: emailError,
-        },
-        {
-          status: 500,
-        }
-      );
+      return NextResponse.json({
+        success: true,
+        emailSent: false,
+        message:
+          "ยกเลิกการจองสำเร็จ แต่ส่งอีเมลแจ้งลูกค้าไม่สำเร็จ",
+        bookingCode: booking.booking_code,
+        cancellationReason,
+      });
     }
 
     console.log(
@@ -464,8 +462,9 @@ ${natureExperienceText}
     // 8. ส่งผลกลับไปหน้า Admin
     // =========================================
 
-    return NextResponse.json({
+        return NextResponse.json({
       success: true,
+      emailSent: true,
 
       message:
         "ยกเลิกการจองและส่งอีเมลให้ลูกค้าเรียบร้อยแล้ว",

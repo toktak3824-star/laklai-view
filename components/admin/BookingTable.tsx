@@ -385,46 +385,37 @@ export default function BookingTable() {
                 )}
               </td>
 
-              {/* สถานะ */}
+                            {/* สถานะ */}
               <td className="space-y-2">
-
+                {/* ปุ่มอนุมัติ: แสดงเฉพาะรายการที่รอตรวจสอบ */}
                 {booking.booking_status === "pending" && (
                   <div className="flex flex-wrap gap-2">
-
-                    {/* อนุมัติ */}
                     <button
                       type="button"
                       onClick={async () => {
-
-                        const confirmed =
-                          window.confirm(
-                            `ต้องการยืนยันการจอง ${booking.booking_code} ใช่หรือไม่?`
-                          );
+                        const confirmed = window.confirm(
+                          `ต้องการยืนยันการจอง ${booking.booking_code} ใช่หรือไม่?`
+                        );
 
                         if (!confirmed) {
                           return;
                         }
 
                         try {
+                          const response = await fetch(
+                            "/api/admin/confirm",
+                            {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify({
+                                id: booking.id,
+                              }),
+                            }
+                          );
 
-                          const response =
-                            await fetch(
-                              "/api/admin/confirm",
-                              {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type":
-                                    "application/json",
-                                },
-                                body:
-                                  JSON.stringify({
-                                    id: booking.id,
-                                  }),
-                              }
-                            );
-
-                          const data =
-                            await response.json();
+                          const data = await response.json();
 
                           if (!response.ok) {
                             throw new Error(
@@ -438,37 +429,40 @@ export default function BookingTable() {
                           );
 
                           await loadBookings();
-
                         } catch (error) {
-
                           console.error(
                             "CONFIRM BOOKING ERROR =",
                             error
                           );
 
                           alert(
-                            "ไม่สามารถยืนยันการจองได้ กรุณาลองใหม่อีกครั้ง"
+                            error instanceof Error
+                              ? error.message
+                              : "ไม่สามารถยืนยันการจองได้ กรุณาลองใหม่อีกครั้ง"
                           );
                         }
-
                       }}
                       className="rounded-lg bg-green-600 px-3 py-2 text-white hover:bg-green-700"
                     >
                       อนุมัติ
                     </button>
+                  </div>
+                )}
 
-                    {/* ยกเลิก */}
+                {/* ปุ่มยกเลิก: แสดงทั้ง pending และ confirmed */}
+                {(booking.booking_status === "pending" ||
+                  booking.booking_status === "confirmed") && (
+                  <div className="mt-2">
                     <button
                       type="button"
                       onClick={async () => {
                         const reason = window.prompt(
                           "กรุณาระบุเหตุผลในการยกเลิกการจอง\n\n" +
-                          "ตัวอย่าง:\n" +
-                          "1. หลักฐานการโอนเงินไม่ครบ\n" +
-                          "2. พบความผิดปกติของการโอนเงิน\n" +
-                          "3. จำนวนผู้เข้าพักไม่ตรงกับที่แจ้ง\n" +
-                          "4. จำนวนผู้เข้าพักเกินความสามารถของบ้านพัก\n" +
-                          "5. อื่น ๆ"
+                            "ตัวอย่าง:\n" +
+                            "1. ลูกค้าขอยกเลิกการจอง\n" +
+                            "2. ตรวจพบปัญหาเกี่ยวกับการจอง\n" +
+                            "3. บ้านพักไม่สามารถให้บริการได้\n" +
+                            "4. อื่น ๆ"
                         );
 
                         if (!reason || !reason.trim()) {
@@ -478,7 +472,7 @@ export default function BookingTable() {
 
                         const confirmed = window.confirm(
                           `ยืนยันการยกเลิกการจอง ${booking.booking_code} หรือไม่?\n\n` +
-                          `เหตุผล:\n${reason}`
+                            `เหตุผล:\n${reason.trim()}`
                         );
 
                         if (!confirmed) {
@@ -486,31 +480,42 @@ export default function BookingTable() {
                         }
 
                         try {
-                          const response = await fetch("/api/admin/cancel", {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
-                              id: booking.id,
-                              reason: reason.trim(),
-                            }),
-                          });
+                          const response = await fetch(
+                            "/api/admin/cancel",
+                            {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify({
+                                id: booking.id,
+                                reason: reason.trim(),
+                              }),
+                            }
+                          );
 
                           const data = await response.json();
 
                           if (!response.ok) {
                             throw new Error(
-                              data.error || "ไม่สามารถยกเลิกการจองได้"
+                              data.error ||
+                                "ไม่สามารถยกเลิกการจองได้"
                             );
                           }
 
-                          alert(
-                            "ยกเลิกการจองเรียบร้อยแล้ว\n" +
-                            "ระบบกำลังส่งอีเมลแจ้งลูกค้า"
-                          );
+                          if (data.emailSent === false) {
+alert(
+"ยกเลิกการจองเรียบร้อยแล้ว แต่ส่งอีเมลแจ้งลูกค้าไม่สำเร็จ\n" +
+"กรุณาตรวจสอบการส่งอีเมลภายหลัง"
+);
+} else {
+alert(
+"ยกเลิกการจองเรียบร้อยแล้ว\n" +
+"ส่งอีเมลแจ้งลูกค้าเรียบร้อยแล้ว"
+);
+}
 
-                          await loadBookings();
+await loadBookings();
 
                         } catch (error) {
                           console.error(
@@ -519,42 +524,37 @@ export default function BookingTable() {
                           );
 
                           alert(
-                            "ไม่สามารถยกเลิกการจองได้ กรุณาลองใหม่อีกครั้ง"
+                            error instanceof Error
+                              ? `ยกเลิกการจองไม่สำเร็จ: ${error.message}`
+                              : "ไม่สามารถยกเลิกการจองได้ กรุณาลองใหม่อีกครั้ง"
                           );
                         }
                       }}
-                      className="rounded bg-red-600 px-3 py-2 text-white hover:bg-red-700"
+                      className="rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-700"
                     >
-                      ยกเลิก
+                      ยกเลิกการจอง
                     </button>
-
                   </div>
                 )}
 
-                {/* สถานะ */}
+                {/* ป้ายแสดงสถานะ */}
                 <span
                   className={
-                    booking.booking_status ===
-                    "confirmed"
+                    booking.booking_status === "confirmed"
                       ? "inline-block rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700"
-                      : booking.booking_status ===
-                        "cancelled"
+                      : booking.booking_status === "cancelled"
                       ? "inline-block rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-700"
                       : "inline-block rounded-full bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-700"
                   }
                 >
-                  {booking.booking_status ===
-                  "pending"
+                  {booking.booking_status === "pending"
                     ? "รอตรวจสอบ"
-                    : booking.booking_status ===
-                      "confirmed"
+                    : booking.booking_status === "confirmed"
                     ? "ยืนยันแล้ว"
-                    : booking.booking_status ===
-                      "cancelled"
+                    : booking.booking_status === "cancelled"
                     ? "ยกเลิก"
                     : booking.booking_status}
                 </span>
-
               </td>
 
             </tr>
