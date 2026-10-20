@@ -36,6 +36,19 @@ export async function POST(req: Request) {
   dinnerTotal,
 } = await req.json();
 
+    const bookingTotal = Math.max(0, Number(totalPrice ?? 0));
+    const depositAmount = bookingTotal >= 4000
+      ? Math.ceil(bookingTotal / 2)
+      : bookingTotal;
+    const balanceAmount = Math.max(0, bookingTotal - depositAmount);
+
+    const paymentBreakdownHtml = `
+      <p><b>ยอดค่าที่พักรวมกิจกรรม:</b> ฿${bookingTotal.toLocaleString("th-TH")}</p>
+      <p><b>ยอดที่ต้องชำระตอนนี้:</b> ฿${depositAmount.toLocaleString("th-TH")}</p>
+      <p><b>ยอดคงเหลือชำระวันเช็กอิน:</b> ฿${balanceAmount.toLocaleString("th-TH")}</p>
+      <p style="font-size:13px;color:#57534e;">คำนวณมัดจำจากยอดค่าที่พักรวมกิจกรรมวิถีบ้านป่า ไม่รวมค่าอาหาร หากยอดรวมต่ำกว่า 4,000 บาท ให้ชำระเต็มจำนวน</p>
+    `;
+
     const customerEmailAddress = String(email ?? "").trim();
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmailAddress)) {
   return NextResponse.json(
@@ -62,15 +75,15 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmailAddress)) {
       (age) => age >= 0 && age <= 8
     );
 
-    // เด็ก 9-13 ปี
+    // เด็ก 9-14 ปี
     const olderChildren = ages.filter(
-      (age) => age >= 9 && age <= 13
+      (age) => age >= 9 && age <= 14
     );
 
-    // อายุ 14 ปีขึ้นไป
+    // อายุ 15 ปีขึ้นไป
     // ถือเป็นผู้ใหญ่
     const adultChildren = ages.filter(
-      (age) => age >= 14
+      (age) => age >= 15
     );
 
     const effectiveAdults =
@@ -84,7 +97,7 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmailAddress)) {
     // =========================================
 
     const needsExtraBed =
-      adultCount >= 3 ||
+      effectiveAdults >= 3 ||
       olderChildren.length > 0 ||
       youngChildren.length >= 2;
 
@@ -331,12 +344,12 @@ const natureExperienceText =
             </p>
 
             <p>
-              🟠 <b>เด็ก 9-13 ปี</b> :
+              🟠 <b>เด็ก 9-14 ปี</b> :
               ${olderChildrenText}
             </p>
 
             <p>
-              🔴 <b>อายุ 14 ปีขึ้นไป</b> :
+              🔴 <b>อายุ 15 ปีขึ้นไป</b> :
               ${adultChildrenText}
             </p>
 
@@ -357,11 +370,7 @@ ${dinnerText}
               ยอดชำระ
             </h3>
 
-            <p style="font-size: 20px;">
-              <b>
-                ฿${Number(totalPrice).toLocaleString()}
-              </b>
-            </p>
+            ${paymentBreakdownHtml}
 
             <p>
               ขณะนี้สถานะการจองคือ
@@ -504,12 +513,12 @@ ${dinnerText}
             </p>
 
             <p style="color: #c25b00;">
-              🟠 เด็ก 9-13 ปี:
+              🟠 เด็ก 9-14 ปี:
               ${olderChildrenText}
             </p>
 
             <p style="color: #b00020;">
-              🔴 อายุ 14 ปีขึ้นไป:
+              🔴 อายุ 15 ปีขึ้นไป:
               ${adultChildrenText}
             </p>
 
@@ -547,11 +556,7 @@ ${dinnerText}
             💰 การชำระเงิน
           </h3>
 
-          <p style="font-size: 22px;">
-            <b>
-              ฿${Number(totalPrice).toLocaleString()}
-            </b>
-          </p>
+          ${paymentBreakdownHtml}
 
           <hr/>
 

@@ -48,6 +48,20 @@ export async function POST(req: Request) {
       );
     }
 
+    const todayInThailand = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+
+    if (String(data.check_in) < todayInThailand) {
+      return NextResponse.json(
+        { error: "ไม่สามารถจองวันเข้าพักย้อนหลังได้ กรุณาเลือกวันเข้าพักตั้งแต่วันนี้เป็นต้นไป" },
+        { status: 400 }
+      );
+    }
+
     // =========================================
     // 2. ตรวจสอบบ้านพัก
     // =========================================
@@ -115,6 +129,62 @@ export async function POST(req: Request) {
         },
         { status: 400 }
       );
+    }
+
+    if (childAges.some((age: number) => !Number.isInteger(age) || age < 0 || age > 17)) {
+      return NextResponse.json(
+        { error: "กรุณาระบุอายุเด็กให้ถูกต้อง (0–17 ปี)" },
+        { status: 400 }
+      );
+    }
+
+    const freeChildren = childAges.filter((age: number) => age >= 0 && age <= 8).length;
+
+const paidChildren = childAges.filter((age: number) => age >= 9 && age <= 14).length;
+
+const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).length;
+    const effectiveAdults = adults + adultChildren;
+    const totalGuests = adults + childAges.length;
+    const mainGuests = effectiveAdults + paidChildren;
+
+    if (room.id === "house4") {
+      if (effectiveAdults > 5 || mainGuests > 5 || freeChildren > 1 || totalGuests > 6) {
+        return NextResponse.json(
+          { error: "บ้านสุขใจรองรับผู้ใหญ่และเด็กอายุ 9–14 ปีรวมสูงสุด 5 คน และเด็กอายุไม่เกิน 8 ปีที่นอนร่วมกับผู้ปกครองได้ฟรีสูงสุด 1 คน (รวมไม่เกิน 6 คน)" },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (effectiveAdults > 3 || totalGuests > 4) {
+        return NextResponse.json(
+          { error: "บ้านพักหลังนี้รองรับผู้ใหญ่สูงสุด 3 คน และผู้เข้าพักรวมไม่เกิน 4 คน" },
+          { status: 400 }
+        );
+      }
+      if (effectiveAdults === 3 && (paidChildren > 0 || freeChildren > 1)) {
+        return NextResponse.json(
+          { error: "เมื่อมีผู้ใหญ่ 3 คน สามารถเข้าพักพร้อมเด็กอายุไม่เกิน 8 ปีได้เพียง 1 คน" },
+          { status: 400 }
+        );
+      }
+      if (effectiveAdults === 2 && paidChildren > 1) {
+        return NextResponse.json(
+          { error: "เด็กอายุ 9–14 ปีสามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนได้สูงสุด 1 คนต่อบ้านพัก" },
+          { status: 400 }
+        );
+      }
+      if (effectiveAdults === 3 && (paidChildren > 0 || freeChildren > 1)) {
+        return NextResponse.json(
+          { error: "เมื่อมีผู้ใหญ่ 3 คน สามารถเข้าพักพร้อมเด็กอายุไม่เกิน 8 ปีได้เพียง 1 คน" },
+          { status: 400 }
+        );
+      }
+      if (effectiveAdults === 2 && paidChildren > 1) {
+        return NextResponse.json(
+          { error: "เด็กอายุ 9–14 ปีสามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนได้สูงสุด 1 คนต่อบ้านพัก" },
+          { status: 400 }
+        );
+      }
     }
 
     // =========================================

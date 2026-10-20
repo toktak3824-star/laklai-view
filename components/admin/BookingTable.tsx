@@ -48,11 +48,11 @@ export default function BookingTable() {
     );
 
     const olderChildren = childAges.filter(
-      (age) => age >= 9 && age <= 13
+      (age) => age >= 9 && age <= 14
     );
 
     const adultChildren = childAges.filter(
-      (age) => age >= 14
+      (age) => age >= 15
     );
 
     const effectiveAdults =
@@ -62,7 +62,7 @@ export default function BookingTable() {
       adults + childAges.length;
 
     const needsExtraBed =
-      adults >= 3 ||
+      effectiveAdults >= 3 ||
       olderChildren.length > 0 ||
       youngChildren.length >= 2;
 
@@ -105,17 +105,17 @@ export default function BookingTable() {
         {/* เด็กโต */}
         {olderChildren.length > 0 && (
           <div className="text-orange-700">
-            🟠 เด็ก 9–13 ปี: {olderChildren.length} คน
+            🟠 เด็ก 9–14 ปี: {olderChildren.length} คน
             <div className="text-xs text-stone-500">
               350 บาท/คน
             </div>
           </div>
         )}
 
-        {/* เด็ก 14+ */}
+        {/* เด็ก 15+ */}
         {adultChildren.length > 0 && (
           <div className="text-red-700">
-            🔴 อายุ 14 ปีขึ้นไป: {adultChildren.length} คน
+            🔴 อายุ 15 ปีขึ้นไป: {adultChildren.length} คน
             <div className="text-xs text-stone-500">
               คิดเป็นผู้ใหญ่
             </div>

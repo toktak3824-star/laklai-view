@@ -24,14 +24,6 @@ export const rooms = [
       originalHoliday: 2690,
       discountLabel: "ประหยัด 400 บาท",
 
-      // โปรโมชั่นเฉพาะเดือนกันยายน 2026
-      promoPrice: 1699,
-      promoOriginalPrice: 1990,
-      promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
-      promoBenefit: "เก็บเงาะทานฟรีได้เลย",
-      promoStartDate: "2026-09-01",
-      promoEndDate: "2026-09-30",
-
       // ราคาพิเศษเดือนตุลาคม 2569
       datePricing: [
         {
@@ -106,14 +98,6 @@ export const rooms = [
       holiday: 2099,
       originalHoliday: 2690,
       discountLabel: "ประหยัด 400 บาท",
-
-      // โปรโมชั่นเฉพาะเดือนกันยายน 2026
-      promoPrice: 1699,
-      promoOriginalPrice: 1990,
-      promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
-      promoBenefit: "เก็บเงาะทานฟรีได้เลย",
-      promoStartDate: "2026-09-01",
-      promoEndDate: "2026-09-30",
 
       // ราคาพิเศษเดือนตุลาคม 2569
       datePricing: [
@@ -192,14 +176,6 @@ export const rooms = [
       originalHoliday: 2790,
       discountLabel: "ประหยัด 400 บาท",
 
-      // โปรโมชั่นเฉพาะเดือนกันยายน 2026
-      promoPrice: 1699,
-      promoOriginalPrice: 1990,
-      promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
-      promoBenefit: "เก็บเงาะทานฟรีได้เลย",
-      promoStartDate: "2026-09-01",
-      promoEndDate: "2026-09-30",
-
       // ราคาพิเศษเดือนตุลาคม 2569
       datePricing: [
         {
@@ -273,14 +249,6 @@ export const rooms = [
       originalHoliday: 2290,
       discountLabel: "ประหยัด 400 บาท",
 
-      // โปรโมชั่นเฉพาะเดือนกันยายน 2026
-      promoPrice: 1699,
-      promoOriginalPrice: 1990,
-      promoLabel: "โปรโมชั่นพิเศษเดือนกันยายน",
-      promoBenefit: "เก็บเงาะทานฟรีได้เลย",
-      promoStartDate: "2026-09-01",
-      promoEndDate: "2026-09-30",
-
       // ราคาพิเศษเดือนตุลาคม 2569
       datePricing: [
         {
@@ -325,7 +293,7 @@ export const rooms = [
     },
 
     defaultGuests: 2,
-    maxGuests: 4,
+    maxGuests: 5,
     extraAdultPrice: 500,
     extraChildBedPrice: 350,
     extraBed: "โซฟาเบด 6 ฟุต",

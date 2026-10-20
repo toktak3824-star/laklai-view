@@ -38,11 +38,11 @@ export function calculatePrice(
   ).length;
 
   const paidChildren = childAges.filter(
-    (age) => age >= 9 && age <= 13
+    (age) => age >= 9 && age <= 14
   ).length;
 
   const adultChildren = childAges.filter(
-    (age) => age >= 14
+    (age) => age >= 15
   ).length;
 
   const effectiveAdults =
@@ -50,36 +50,6 @@ export function calculatePrice(
 
   const totalGuests =
     booking.adults + childAges.length;
-
-  /*
-   * ==========================================
-   * โปรโมชั่นเดือนกันยายน 2026
-   * ==========================================
-   *
-   * บ้าน 1-3 = 1,699 บาท / คืน
-   * บ้าน 4 "บ้านสุขใจ" = 1,499 บาท / คืน
-   *
-   * โปรโมชั่นใช้เฉพาะ:
-   * 1 - 30 กันยายน 2026
-   */
-
-  const isSeptemberPromo = (date: Date) => {
-    return (
-      date.getFullYear() === 2026 &&
-      date.getMonth() === 8
-    );
-  };
-
-  /*
-   * ==========================================
-   * ราคาพิเศษอื่น ๆ
-   * ==========================================
-   *
-   * ลูกค้า 1 คน = 1,009 บาท / คืน
-   *
-   * บ้าน 4:
-   * ผู้ใหญ่ 4 คน = 2,590 บาท / คืน
-   */
 
   const isSingleGuest =
     totalGuests === 1 &&
@@ -89,25 +59,34 @@ export function calculatePrice(
   const isHouse4 =
     room.id === "house4";
 
-  const isHouse4FourAdults =
-    isHouse4 &&
-    effectiveAdults === 4 &&
-    childAges.length === 0;
+  /*
+   * บ้านสุขใจในวันหยุด:
+   * ใช้จำนวนผู้เข้าพักทุกวัยรวมกัน
+   * และใช้ราคาเหมาจ่ายตามจำนวนคน
+   */
+  const getHouse4HolidayPrice = (
+    guests: number
+  ): number | null => {
+    switch (guests) {
+      case 2:
+        return 1900;
+      case 3:
+        return 2400;
+      case 4:
+        return 2900;
+      case 5:
+        return 3250;
+      default:
+        return null;
+    }
+  };
 
   /*
    * ==========================================
    * ราคาพิเศษตามช่วงวันที่
    * ==========================================
    *
-   * 5 - 7 ธันวาคม 2026
-   * บ้าน 1-3 = 2,249 บาท
-   * บ้าน 4 = 1,899 บาท
-   *
-   * 29 ธันวาคม 2026 - 2 มกราคม 2027
-   * บ้าน 1-3 = 2,399 บาท
-   * บ้าน 4 = 1,989 บาท
-   *
-   * ข้อมูลราคาจะอ่านจาก room.pricing.datePricing
+   * อ่านข้อมูลจาก room.pricing.datePricing
    */
 
   const getDatePricing = (date: Date) => {
@@ -139,68 +118,47 @@ export function calculatePrice(
       let price: number;
 
       /*
-       * ==========================================
-       * 1. ลูกค้า 1 คน
-       * ==========================================
-       *
-       * วัน Holiday = 1,200 บาท
-       * วันธรรมดา = 1,009 บาท
-       *
-       * กฎนี้มาก่อนโปรโมชั่นเดือนกันยายน
+       * ลูกค้า 1 คน:
+       * วันหยุด 1,200 บาท
+       * วันธรรมดา 1,009 บาท
        */
-
       if (isSingleGuest && holiday) {
         price = 1200;
-      }
-
-      else if (isSingleGuest) {
+      } else if (isSingleGuest) {
         price = 1009;
       }
 
       /*
-       * ==========================================
-       * 2. โปรโมชั่นเดือนกันยายน 2026
-       * ==========================================
+       * บ้านสุขใจในวันหยุด:
+       * ราคาตามจำนวนผู้เข้าพักทุกวัย
        *
-       * บ้าน 1-3 = 1,699 บาท / คืน
-       * บ้าน 4 บ้านสุขใจ = 1,499 บาท / คืน
-       *
-       * ใช้เฉพาะวันที่
-       * 1-30 กันยายน 2026
+       * เมื่อใช้ราคาแบบนี้แล้ว จะไม่บวก
+       * ค่าผู้เข้าพักเสริมซ้ำอีก
        */
+      else if (isHouse4 && holiday) {
+        const holidayPrice =
+          getHouse4HolidayPrice(totalGuests);
 
-      else if (isSeptemberPromo(date)) {
-        price = isHouse4 ? 1499 : 1699;
+        if (holidayPrice !== null) {
+          price = holidayPrice;
+        } else {
+          const specialPrice = getDatePricing(date);
+
+          price = specialPrice
+            ? specialPrice.price
+            : room.pricing.holiday;
+        }
       }
 
       /*
-       * ==========================================
-       * 3. บ้าน 4 ผู้ใหญ่ 4 คน
-       * ==========================================
+       * ราคาพิเศษตามช่วงวันที่
        */
-
-      else if (isHouse4FourAdults) {
-        price = 2590;
-      }
-
-      /*
-       * ==========================================
-       * 4. ราคาพิเศษตามช่วงวันที่
-       * ==========================================
-       */
-
       else {
         const specialPrice = getDatePricing(date);
 
         if (specialPrice) {
           price = specialPrice.price;
         } else {
-          /*
-           * ==========================================
-           * 5. ราคาปกติ
-           * ==========================================
-           */
-
           price = holiday
             ? room.pricing.holiday
             : room.pricing.weekday;
@@ -208,11 +166,8 @@ export function calculatePrice(
       }
 
       /*
-       * ==========================================
        * นับจำนวนคืน
-       * ==========================================
        */
-
       if (holiday) {
         holidayNights++;
       } else {
@@ -230,56 +185,65 @@ export function calculatePrice(
       };
     });
 
+  /*
+   * ==========================================
+   * ค่าผู้เข้าพักเสริม
+   * ==========================================
+   *
+   * บ้านสุขใจ:
+   * หากเป็นวันหยุดและจำนวนผู้เข้าพัก 2–5 คน
+   * ราคาห้องรวมค่าผู้เข้าพักตามจำนวนคนแล้ว
+   * จึงไม่บวกค่าเสริมซ้ำ
+   *
+   * บ้านอื่นและวันธรรมดา:
+   * ใช้กฎเดิม
+   */
+
   const extraAdults = Math.max(
     0,
     effectiveAdults - room.defaultGuests
   );
 
-  /*
-   * บ้าน 4 กรณีผู้ใหญ่ 4 คน
-   *
-   * ราคาห้องถูกกำหนดเป็น 2,590 บาท
-   * จึงไม่บวกค่า extra adult ซ้ำ
-   */
+  const house4HolidayTierPricing =
+    isHouse4 &&
+    stayDates.some((date) => isHoliday(date)) &&
+    totalGuests >= 2 &&
+    totalGuests <= 5;
 
   const extraAdultTotal =
-    isHouse4FourAdults
+    house4HolidayTierPricing
       ? 0
       : extraAdults * room.extraAdultPrice;
 
   /*
    * ==========================================
-   * ค่าเด็กอายุ 9-13 ปี
+   * ค่าเด็กอายุ 9–14 ปี
    * ==========================================
+   *
+   * บ้านสุขใจที่ใช้ราคาตามจำนวนคนในวันหยุด
+   * ไม่คิดค่าเด็กเพิ่มซ้ำ
+   *
+   * กรณีอื่นคงกฎเดิม
    */
 
   const extraChildTotal =
-    paidChildren * room.extraChildBedPrice;
+    house4HolidayTierPricing
+      ? 0
+      : paidChildren * room.extraChildBedPrice;
 
   /*
    * ==========================================
    * ที่นอนเสริม
    * ==========================================
-   *
-   * เด็ก 2 คนขึ้นไป
-   * ต้องพิจารณาที่นอนเสริม
-   *
-   * เด็ก 9-13 ปี
-   * มีค่าเตียง 350 บาท/คนอยู่แล้ว
-   *
-   * เด็ก 0-8 ปี 2 คน
-   * คิดค่าที่นอนเสริม 350 บาท
    */
 
   const extraBedRequired =
     childAges.length >= 2;
 
   /*
-   * ==========================================
-   * บ้าน 4
+   * บ้านสุขใจ:
    * เด็กคนที่ 5 อายุไม่เกิน 8 ปี
-   * นอนร่วมกับพ่อแม่ = ฟรี
-   * ==========================================
+   * ไม่คิดค่าเตียงเพิ่ม
    */
 
   const isHouse4FreeFifthChild =
@@ -288,6 +252,7 @@ export function calculatePrice(
     freeChildren === 1;
 
   const extraChildBedTotal =
+    house4HolidayTierPricing ||
     isHouse4FreeFifthChild
       ? 0
       : extraBedRequired && paidChildren === 0

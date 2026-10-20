@@ -20,37 +20,6 @@ import {
 // ไม่ใช่วันปิดรับจองที่พัก
 // =====================================================
 
-const NATURE_EXPERIENCE_BLOCKED_DATES = [
-  // ตุลาคม 2569
-  "2026-10-24",
-  "2026-10-25",
-
-  // ธันวาคม 2569
-  "2026-12-05",
-  "2026-12-06",
-  "2026-12-07",
-
-  "2026-12-24",
-  "2026-12-25",
-  "2026-12-26",
-  "2026-12-27",
-  "2026-12-28",
-  "2026-12-29",
-  "2026-12-30",
-  "2026-12-31",
-
-  // มกราคม 2570
-  "2027-01-01",
-  "2027-01-02",
-] as const;
-function isNatureExperienceBlockedDate(
-  date: string
-) {
-  return NATURE_EXPERIENCE_BLOCKED_DATES.includes(
-    date as (typeof NATURE_EXPERIENCE_BLOCKED_DATES)[number]
-  );
-}
-
 type Props = {
   room: Room;
 };
@@ -191,12 +160,17 @@ const totalPrice =
   roomTotal +
   natureExperienceTotal;
 
+const depositAmount = totalPrice >= 4000
+  ? Math.ceil(totalPrice / 2)
+  : totalPrice;
+const balanceAmount = Math.max(0, totalPrice - depositAmount);
+
     const olderChildren = childAges.filter(
-    (age) => age >= 9 && age <= 13
+    (age) => age >= 9 && age <= 14
   ).length;
 
   const adultChildren = childAges.filter(
-    (age) => age >= 14
+    (age) => age >= 15
   ).length;
 
   const effectiveAdults =
@@ -221,7 +195,7 @@ const totalPrice =
    * ผู้ใหญ่เกิน 2 คน:
    * +500 บาท / คน
    *
-   * เด็ก 9-13 ปี:
+   * เด็ก 9-14 ปี:
    * +350 บาท / คน
    *
    * เด็ก 0-8 ปี:
@@ -266,42 +240,36 @@ const totalPrice =
 
   /*
    * บ้าน 4:
-   * เมื่อคนหลักครบ 4 คน
-   * อนุญาตเด็ก 0-8 ปีเพิ่มได้ 1 คน
+   * ผู้ใหญ่และเด็กอายุ 9-14 ปีรวมไม่เกิน 5 คน
+   * และอนุญาตเด็กอายุ 0-8 ปีที่นอนร่วมกับผู้ปกครองฟรีได้ 1 คน
    */
 
   const house4MainGuestsFull =
-    isHouse4 && mainGuests >= 4;
+    isHouse4 && mainGuests >= 5;
 
   /*
    * =========================================
    * จำนวนผู้ใหญ่ที่เลือกได้
    *
    * บ้าน 1-3 = สูงสุด 3 คน
-   * บ้าน 4 = สูงสุด 4 คน
+   * บ้าน 4 = สูงสุด 5 คน
    * =========================================
    */
 
-  const maxAdultOption = isHouse4 ? 4 : 3;
+  const maxAdultOption = isHouse4 ? 5 : 3;
 
   /*
    * =========================================
    * จำนวนเด็กที่เลือกได้
    *
-   * บ้าน 4:
-   * ถ้าคนหลักครบ 4 แล้ว
-   * เพิ่มเด็กเล็กได้สูงสุด 1 คน
-   *
-   * ถ้ายังไม่ครบ 4 คน
-   * ใช้กฎเดิมของบ้าน
+   * บ้าน 4: ผู้ใหญ่และเด็กอายุ 9-14 ปีรวมสูงสุด 5 คน
+   * เพิ่มเด็กอายุ 0-8 ปีได้ฟรีอีก 1 คน
    * =========================================
    */
 
   const maxChildren =
     isHouse4
-      ? house4MainGuestsFull
-        ? 1
-        : Math.min(2, 4 - mainGuests)
+      ? Math.min(2, Math.max(0, 5 - effectiveAdults) + 1)
       : adults === 3
         ? 1
         : 2;
@@ -323,7 +291,7 @@ const totalPrice =
      * และมีได้สูงสุด 1 คน
      */
 
-    if (isHouse4 && newAdults >= 4) {
+    if (isHouse4 && newAdults >= 5) {
       setChildren((current) =>
         Math.min(current, 1)
       );
@@ -547,11 +515,11 @@ if (natureExperienceSelected) {
       // =========================================
 
       const adultChildren = childAges.filter(
-        (age) => age >= 14
+        (age) => age >= 15
       ).length;
 
       const olderChildren = childAges.filter(
-        (age) => age >= 9 && age <= 13
+        (age) => age >= 9 && age <= 14
       ).length;
 
       const youngChildren = childAges.filter(
@@ -569,62 +537,58 @@ if (natureExperienceSelected) {
 
       if (isHouse4) {
         /*
-         * ผู้ใหญ่ + เด็ก 14+ สูงสุด 4 คน
+         * ผู้ใหญ่ + เด็ก 15+ สูงสุด 5 คน
          */
 
-        if (effectiveAdults > 4) {
+        if (effectiveAdults > 5) {
           alert(
-            "บ้านสุขใจรองรับผู้ใหญ่รวมสูงสุด 4 คน"
+            "บ้านสุขใจรองรับผู้ใหญ่รวมสูงสุด 5 คน"
           );
           setIsSubmitting(false);
           return;
         }
 
         /*
-         * คนหลัก = ผู้ใหญ่ + เด็ก 9-13
+         * คนหลัก = ผู้ใหญ่ + เด็ก 9-14
          */
 
         const mainGuests =
           effectiveAdults + olderChildren;
 
         /*
-         * คนหลักต้องไม่เกิน 4
+         * คนหลักต้องไม่เกิน 5
          */
 
-        if (mainGuests > 4) {
+        if (mainGuests > 5) {
           alert(
-            "บ้านสุขใจรองรับผู้ใหญ่และเด็กอายุ 9 ปีขึ้นไป รวมสูงสุด 4 คน"
+            "บ้านสุขใจรองรับผู้ใหญ่และเด็กอายุ 9–14 ปี รวมสูงสุด 5 คน"
           );
           setIsSubmitting(false);
           return;
         }
 
         /*
-         * เมื่อครบ 4 คนหลักแล้ว
-         * เด็ก 0-8 เพิ่มได้ 1 คนฟรี
+         * เด็ก 0-8 ปีเพิ่มได้ฟรีสูงสุด 1 คน
          */
 
-        if (
-          mainGuests === 4 &&
-          youngChildren > 1
-        ) {
+        if (youngChildren > 1) {
           alert(
-            "เมื่อผู้ใหญ่และเด็กโตครบ 4 คนแล้ว สามารถเพิ่มเด็กอายุไม่เกิน 8 ปีได้อีก 1 คนฟรี"
+            "บ้านสุขใจรับเด็กอายุไม่เกิน 8 ปีที่พักร่วมกับผู้ปกครองได้ฟรีสูงสุด 1 คน"
           );
           setIsSubmitting(false);
           return;
         }
 
         /*
-         * รวมจำนวนจริงต้องไม่เกิน 5
+         * รวมจำนวนจริงต้องไม่เกิน 6
          */
 
         const totalHouse4Guests =
           adults + childAges.length;
 
-        if (totalHouse4Guests > 5) {
+        if (totalHouse4Guests > 6) {
           alert(
-            "บ้านสุขใจรองรับผู้เข้าพักสูงสุด 5 คน โดยคนที่ 5 ต้องเป็นเด็กอายุไม่เกิน 8 ปี"
+            "บ้านสุขใจรองรับผู้เข้าพักรวมสูงสุด 6 คน โดยอนุญาตเด็กอายุไม่เกิน 8 ปีที่นอนร่วมกับผู้ปกครองได้ฟรี 1 คน"
           );
           setIsSubmitting(false);
           return;
@@ -659,7 +623,7 @@ if (natureExperienceSelected) {
         ) {
           alert(
             "ไม่สามารถจองได้\n\n" +
-              "เด็กอายุ 9-13 ปี จำนวน 2 คน ไม่สามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนในบ้านหลังเดียวได้\n\n" +
+              "เด็กอายุ 9-14 ปี จำนวน 2 คน ไม่สามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนในบ้านหลังเดียวได้\n\n" +
               "กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง"
           );
 
@@ -680,7 +644,7 @@ if (natureExperienceSelected) {
         if (effectiveAdults > 3) {
           alert(
             "ไม่สามารถจองบ้านพักหลังเดียวได้\n\n" +
-              "เด็กอายุ 14 ปีขึ้นไปจะคิดเป็นผู้ใหญ่\n\n" +
+              "เด็กอายุ 15 ปีขึ้นไปจะคิดเป็นผู้ใหญ่\n\n" +
               "จำนวนผู้ใหญ่ที่ต้องรองรับเกินความจุของบ้านพัก"
           );
 
@@ -887,7 +851,7 @@ const booking = result.booking;
                 room.title,
               checkIn,
               checkOut,
-              totalPrice,
+              totalPrice: Number(booking.total_price ?? totalPrice),
               bookingCode,
               adults,
               childAges,
@@ -1315,7 +1279,48 @@ natureExperienceTotal:
             </div>
           </div>
 
-{/* =========================================
+{/* Price preview: แสดงหลังข้อมูลผู้จอง ก่อนสั่งอาหาร */}
+          {bookingResult && (
+            <div className="overflow-hidden rounded-2xl border-2 border-green-200 bg-green-50">
+              <div className="border-b border-green-200 px-5 py-4">
+                <h3 className="text-lg font-bold text-green-950">
+                  💰 สรุปราคาที่พักเบื้องต้น
+                </h3>
+                <p className="mt-1 text-sm text-green-800">
+                  ตรวจสอบราคาได้ก่อนเลือกสั่งอาหารล่วงหน้า
+                </p>
+              </div>
+              <div className="space-y-3 px-5 py-5">
+                <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
+                  <span>บ้านพัก</span>
+                  <span className="font-semibold text-stone-800">{room.title}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
+                  <span>วันเข้าพัก – วันออก</span>
+                  <span className="text-right font-semibold text-stone-800">{checkIn} – {checkOut}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
+                  <span>จำนวนคืน</span>
+                  <span className="font-semibold text-stone-800">{bookingResult.nights} คืน</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
+                  <span>จำนวนผู้เข้าพัก</span>
+                  <span className="font-semibold text-stone-800">
+                    ผู้ใหญ่ {adults} คน{children > 0 ? ` และเด็ก ${children} คน` : ""}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-4 border-t border-green-200 pt-3">
+                  <span className="font-bold text-green-950">รวมค่าที่พัก</span>
+                  <span className="text-2xl font-bold text-green-700">฿{roomTotal.toLocaleString("th-TH")}</span>
+                </div>
+                <p className="text-xs leading-5 text-stone-600">
+                  ราคานี้เป็นค่าที่พักตามวันและจำนวนผู้เข้าพักที่เลือก ยังไม่รวมกิจกรรมวิถีบ้านป่าหรืออาหารที่อาจเลือกเพิ่มเติม
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================
     DINNER PRE-ORDER
 ========================================= */}
 <div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50">
@@ -1688,35 +1693,30 @@ natureExperienceTotal:
       </span>
     </div>
 
-    {/* โปรโมชั่นเดือนกันยายน */}
-    {bookingResult &&
-      bookingResult.breakdown.some(
-        (night) =>
-          night.price ===
-          (isHouse4 ? 1499 : 1699)
-      ) && (
-        <div className="rounded-xl border border-green-300 bg-white px-4 py-3">
+    {bookingResult && bookingResult.extraAdultTotal > 0 && (
+      <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
+        <span>ค่าผู้ใหญ่เสริม</span>
+        <span className="font-semibold text-stone-800">฿{bookingResult.extraAdultTotal.toLocaleString("th-TH")}</span>
+      </div>
+    )}
 
-          <p className="font-bold text-green-800">
-            🎉 โปรโมชั่นพิเศษเดือนกันยายน 2026
-          </p>
+    {bookingResult && bookingResult.extraChildTotal > 0 && (
+      <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
+        <span>ค่าเด็กอายุ 9–14 ปี</span>
+        <span className="font-semibold text-stone-800">฿{bookingResult.extraChildTotal.toLocaleString("th-TH")}</span>
+      </div>
+    )}
 
-          <p className="mt-1 text-sm text-stone-600">
-            {isHouse4
-              ? "บ้านสุขใจ เหลือเพียง 1,499 บาท / คืน"
-              : "ราคาพิเศษ เหลือเพียง 1,699 บาท / คืน"}
-          </p>
-
-          <p className="mt-1 text-sm font-semibold text-green-700">
-            🍈 เก็บเงาะทานฟรีได้เลย
-          </p>
-
-        </div>
-      )}
+    {bookingResult && bookingResult.extraChildBedTotal > 0 && (
+      <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
+        <span>ค่าที่นอนเสริมสำหรับเด็ก</span>
+        <span className="font-semibold text-stone-800">฿{bookingResult.extraChildBedTotal.toLocaleString("th-TH")}</span>
+      </div>
+    )}
 
     <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
       <span>
-  ราคาปกติต่อ 1 คืน
+  ราคารวมปกติก่อนส่วนลด
 </span>
 
       <span className="line-through text-stone-400">
@@ -1777,39 +1777,58 @@ natureExperienceTotal:
   )}
 
     {dinnerItems.length > 0 && (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-        <div className="flex items-center justify-between gap-4">
+      <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
+        <div className="mb-3 flex items-center justify-between gap-4">
           <div>
             <p className="font-semibold text-amber-900">
-              🍽️ อาหารเย็นสั่งล่วงหน้า
+              🍽️ รายการอาหารเย็นที่สั่งล่วงหน้า
             </p>
-            <p className="mt-1 text-xs text-stone-500">
-              ชำระในวันเช็คอิน — ไม่รวมในยอดโอน
+            <p className="mt-1 text-xs text-stone-600">
+              ค่าอาหารชำระแยกต่างหาก ณ วันเช็กอิน
             </p>
           </div>
-          <span className="shrink-0 font-bold text-amber-700">
+          <span className="shrink-0 text-xl font-bold text-amber-700">
             ฿{dinnerTotal.toLocaleString("th-TH")}
           </span>
+        </div>
+        <div className="space-y-2 border-t border-amber-200 pt-3">
+          {dinnerItems.map((item) => (
+            <div key={item.id} className="flex items-start justify-between gap-3 text-sm">
+              <span className="text-stone-700">{item.name} × {item.quantity}</span>
+              <span className="shrink-0 font-semibold text-stone-800">
+                ฿{(item.price * item.quantity).toLocaleString("th-TH")}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 rounded-lg bg-white p-3 text-sm leading-6 text-amber-950">
+          <p className="font-bold">โปรดทราบ: ค่าอาหารไม่รวมในยอดชำระค่าจอง</p>
+          <p>ท่านชำระค่าอาหารตามยอดข้างต้นกับที่พักในวันเช็กอิน ไม่ต้องโอนค่าอาหารพร้อมเงินมัดจำหรือค่าจองห้องพัก</p>
         </div>
       </div>
     )}
 
-    <div className="flex items-center justify-between gap-4 border-t border-green-200 pt-4">
-
-      <div>
-        <p className="text-sm font-medium text-stone-600">
-          ยอดที่ต้องชำระ
-        </p>
-
-        <p className="text-xs text-stone-500">
-  รวมค่าที่พักและกิจกรรมที่เลือก
-</p>
+    <div className="space-y-3 border-t border-green-200 pt-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-stone-600">ยอดรวมค่าที่พักและกิจกรรม</p>
+          <p className="text-xs text-stone-500">ไม่รวมค่าอาหาร โดยค่าอาหารชำระแยกในวันเช็กอิน</p>
+        </div>
+        <p className="text-xl font-bold text-stone-800">฿{totalPrice.toLocaleString("th-TH")}</p>
       </div>
 
-      <p className="text-3xl font-bold text-green-700 sm:text-4xl">
-        ฿{totalPrice.toLocaleString()}
-      </p>
+      <div className="flex items-center justify-between gap-4 rounded-xl bg-white p-4">
+        <div>
+          <p className="font-bold text-green-800">ยอดที่ต้องชำระตอนนี้</p>
+          <p className="text-xs text-stone-500">{totalPrice >= 4000 ? "มัดจำ 50% ของยอดค่าที่พักรวมกิจกรรม" : "ยอดรวมต่ำกว่า 4,000 บาท ชำระเต็มจำนวน"}</p>
+        </div>
+        <p className="text-2xl font-bold text-green-700">฿{depositAmount.toLocaleString("th-TH")}</p>
+      </div>
 
+      <div className="flex items-center justify-between gap-4 text-sm text-stone-600">
+        <span>ยอดคงเหลือค่าที่พัก/กิจกรรม (ถ้ามี) ชำระวันเช็กอิน</span>
+        <span className="font-semibold text-stone-800">฿{balanceAmount.toLocaleString("th-TH")}</span>
+      </div>
     </div>
 
   </div>

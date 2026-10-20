@@ -42,6 +42,24 @@ export async function POST(req: Request) {
       );
     }
 
+    const todayInThailand = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+
+    if (String(checkIn) < todayInThailand) {
+      return NextResponse.json(
+        {
+          available: false,
+          reason: "past_date",
+          error: "ไม่สามารถจองวันเข้าพักย้อนหลังได้ กรุณาเลือกวันเข้าพักตั้งแต่วันนี้เป็นต้นไป",
+        },
+        { status: 400 }
+      );
+    }
+
     // =========================================
     // 3. ตรวจจำนวนผู้เข้าพัก
     // =========================================
@@ -57,11 +75,11 @@ export async function POST(req: Request) {
     ).length;
 
     const olderChildren = ages.filter(
-      (age) => age >= 9 && age <= 13
+      (age) => age >= 9 && age <= 14
     ).length;
 
     const adultChildren = ages.filter(
-      (age) => age >= 14
+      (age) => age >= 15
     ).length;
 
     const effectiveAdults =
@@ -76,16 +94,16 @@ export async function POST(req: Request) {
 
     if (roomId === "house4") {
       /*
-       * ผู้ใหญ่จริง + เด็กอายุ 14+
+       * ผู้ใหญ่จริง + เด็กอายุ 15+
        * ต้องไม่เกิน 4 คน
        */
 
-      if (effectiveAdults > 4) {
+      if (effectiveAdults > 5) {
         return NextResponse.json({
           available: false,
           reason: "guest_limit",
           message:
-            "บ้านสุขใจรองรับผู้ใหญ่รวมสูงสุด 4 คน",
+            "บ้านสุขใจรองรับผู้ใหญ่รวมสูงสุด 5 คน",
         });
       }
 
@@ -94,56 +112,53 @@ export async function POST(req: Request) {
        *
        * ผู้ใหญ่
        * +
-       * เด็กอายุ 9-13 ปี
+       * เด็กอายุ 9-14 ปี
        */
 
       const mainGuests =
         effectiveAdults + olderChildren;
 
       /*
-       * คนหลักสูงสุด 4 คน
+       * คนหลักสูงสุด 5 คน
        */
 
-      if (mainGuests > 4) {
+      if (mainGuests > 5) {
         return NextResponse.json({
           available: false,
           reason: "guest_limit",
           message:
-            "บ้านสุขใจรองรับผู้ใหญ่และเด็กอายุ 9 ปีขึ้นไป รวมสูงสุด 4 คน",
+            "บ้านสุขใจรองรับผู้ใหญ่และเด็กอายุ 9–14 ปี รวมสูงสุด 5 คน",
         });
       }
 
       /*
-       * เมื่อคนหลักครบ 4 คน
+       * เด็กอายุ 0–8 ปีเพิ่มได้ฟรีสูงสุด 1 คน
        *
        * อนุญาตเด็ก 0-8 ปี
        * เพิ่มได้อีก 1 คนฟรี
        */
 
-      if (
-        mainGuests === 4 &&
-        youngChildren > 1
-      ) {
+      if (youngChildren > 1) {
         return NextResponse.json({
           available: false,
           reason: "guest_limit",
           message:
-            "เมื่อผู้ใหญ่และเด็กโตครบ 4 คนแล้ว สามารถเพิ่มเด็กอายุไม่เกิน 8 ปีได้อีก 1 คนฟรี",
+            "บ้านสุขใจรับเด็กอายุไม่เกิน 8 ปีที่พักร่วมกับผู้ปกครองได้ฟรีสูงสุด 1 คน",
         });
       }
 
       /*
-       * จำนวนคนทั้งหมดสูงสุด 5
+       * จำนวนคนทั้งหมดสูงสุด 6
        *
-       * คนที่ 5 ต้องเป็นเด็ก 0-8 ปี
+       * หากมีผู้เข้าพักเกิน 5 คน ต้องมีเด็กอายุ 0–8 ปี 1 คน
        */
 
-      if (totalGuests > 5) {
+      if (totalGuests > 6) {
         return NextResponse.json({
           available: false,
           reason: "guest_limit",
           message:
-            "บ้านสุขใจรองรับผู้เข้าพักสูงสุด 5 คน โดยคนที่ 5 ต้องเป็นเด็กอายุไม่เกิน 8 ปี",
+            "บ้านสุขใจรองรับผู้เข้าพักรวมสูงสุด 6 คน โดยอนุญาตเด็กอายุไม่เกิน 8 ปีที่นอนร่วมกับผู้ปกครองได้ฟรี 1 คน",
         });
       }
 
@@ -153,7 +168,7 @@ export async function POST(req: Request) {
        */
 
       if (
-        totalGuests === 5 &&
+        totalGuests > 5 &&
         youngChildren !== 1
       ) {
         return NextResponse.json({
@@ -213,7 +228,7 @@ export async function POST(req: Request) {
       /*
        * ผู้ใหญ่จริง 2 คน
        *
-       * เด็ก 9-13 ได้สูงสุด 1 คน
+       * เด็ก 9-14 ได้สูงสุด 1 คน
        */
 
       if (
@@ -224,7 +239,7 @@ export async function POST(req: Request) {
           available: false,
           reason: "guest_limit",
           message:
-            "เด็กอายุ 9-13 ปี สามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนได้สูงสุด 1 คนต่อบ้านพัก เนื่องจากต้องใช้ที่นอนเสริม กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง",
+            "เด็กอายุ 9-14 ปี สามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนได้สูงสุด 1 คนต่อบ้านพัก เนื่องจากต้องใช้ที่นอนเสริม กรุณาเลือกบ้านพักเพิ่มอีก 1 หลัง",
         });
       }
 
