@@ -51,6 +51,13 @@ export function calculatePrice(
   const totalGuests =
     booking.adults + childAges.length;
 
+// จำนวนผู้เข้าพักที่นำไปคิดราคา
+// เด็กอายุ 0-8 ปี ไม่ถูกนำมาคิดเงิน
+// จำนวนผู้เข้าพักที่ใช้เลือกราคาวันหยุด
+// นับเฉพาะผู้ใหญ่และผู้ที่อายุ 15 ปีขึ้นไป
+const chargeableGuests =
+  effectiveAdults;
+
   const isSingleGuest =
     totalGuests === 1 &&
     booking.adults === 1 &&
@@ -136,8 +143,8 @@ export function calculatePrice(
        * ค่าผู้เข้าพักเสริมซ้ำอีก
        */
       else if (isHouse4 && holiday) {
-        const holidayPrice =
-          getHouse4HolidayPrice(totalGuests);
+        const holidayPrice = 
+        getHouse4HolidayPrice(chargeableGuests);
 
         if (holidayPrice !== null) {
           price = holidayPrice;
@@ -207,8 +214,8 @@ export function calculatePrice(
   const house4HolidayTierPricing =
     isHouse4 &&
     stayDates.some((date) => isHoliday(date)) &&
-    totalGuests >= 2 &&
-    totalGuests <= 5;
+    chargeableGuests >= 2 &&
+    chargeableGuests <= 5;
 
   const extraAdultTotal =
     house4HolidayTierPricing
@@ -226,10 +233,9 @@ export function calculatePrice(
    * กรณีอื่นคงกฎเดิม
    */
 
-  const extraChildTotal =
-    house4HolidayTierPricing
-      ? 0
-      : paidChildren * room.extraChildBedPrice;
+  // เด็กอายุ 9-14 ปี คิดเพิ่มคนละ 350 บาท
+const extraChildTotal =
+  paidChildren * room.extraChildBedPrice;
 
   /*
    * ==========================================
