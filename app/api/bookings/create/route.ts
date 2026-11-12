@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 import { rooms } from "@/data/rooms";
 import { calculatePrice } from "@/utils/calculatePrice";
-import { DINNER_MENU } from "@/data/dinnerMenu";
+
 import {
   calculateNatureExperienceTotal,
   isNatureExperienceAvailable,
@@ -21,43 +21,41 @@ export async function POST(req: Request) {
 
     if (!data.room_id) {
       return NextResponse.json(
-        {
-          error: "ไม่พบข้อมูลบ้านพัก",
-        },
+        { error: "ไม่พบข้อมูลบ้านพัก" },
         { status: 400 }
       );
     }
 
     if (!data.check_in || !data.check_out) {
       return NextResponse.json(
-        {
-          error:
-            "กรุณาระบุวันเช็คอินและเช็คเอาท์",
-        },
+        { error: "กรุณาระบุวันเช็คอินและเช็คเอาท์" },
         { status: 400 }
       );
     }
 
     if (data.check_in >= data.check_out) {
       return NextResponse.json(
-        {
-          error:
-            "วันเช็คเอาท์ต้องอยู่หลังวันเช็คอิน",
-        },
+        { error: "วันเช็คเอาท์ต้องอยู่หลังวันเช็คอิน" },
         { status: 400 }
       );
     }
 
-    const todayInThailand = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Bangkok",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
+    const todayInThailand = new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone: "Asia/Bangkok",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }
+    ).format(new Date());
 
     if (String(data.check_in) < todayInThailand) {
       return NextResponse.json(
-        { error: "ไม่สามารถจองวันเข้าพักย้อนหลังได้ กรุณาเลือกวันเข้าพักตั้งแต่วันนี้เป็นต้นไป" },
+        {
+          error:
+            "ไม่สามารถจองวันเข้าพักย้อนหลังได้ กรุณาเลือกวันเข้าพักตั้งแต่วันนี้เป็นต้นไป",
+        },
         { status: 400 }
       );
     }
@@ -72,9 +70,7 @@ export async function POST(req: Request) {
 
     if (!room) {
       return NextResponse.json(
-        {
-          error: "ไม่พบบ้านพักที่เลือก",
-        },
+        { error: "ไม่พบบ้านพักที่เลือก" },
         { status: 400 }
       );
     }
@@ -85,38 +81,22 @@ export async function POST(req: Request) {
 
     const adults = Number(data.adults ?? 0);
 
-    const children = Number(
-      data.children ?? 0
-    );
+    const children = Number(data.children ?? 0);
 
-    const childAges = Array.isArray(
-      data.child_ages
-    )
+    const childAges = Array.isArray(data.child_ages)
       ? data.child_ages.map(Number)
       : [];
 
-    if (
-      !Number.isInteger(adults) ||
-      adults <= 0
-    ) {
+    if (!Number.isInteger(adults) || adults <= 0) {
       return NextResponse.json(
-        {
-          error:
-            "จำนวนผู้ใหญ่ไม่ถูกต้อง",
-        },
+        { error: "จำนวนผู้ใหญ่ไม่ถูกต้อง" },
         { status: 400 }
       );
     }
 
-    if (
-      !Number.isInteger(children) ||
-      children < 0
-    ) {
+    if (!Number.isInteger(children) || children < 0) {
       return NextResponse.json(
-        {
-          error:
-            "จำนวนเด็กไม่ถูกต้อง",
-        },
+        { error: "จำนวนเด็กไม่ถูกต้อง" },
         { status: 400 }
       );
     }
@@ -131,57 +111,93 @@ export async function POST(req: Request) {
       );
     }
 
-    if (childAges.some((age: number) => !Number.isInteger(age) || age < 0 || age > 17)) {
+    if (
+      childAges.some(
+        (age: number) =>
+          !Number.isInteger(age) ||
+          age < 0 ||
+          age > 17
+      )
+    ) {
       return NextResponse.json(
-        { error: "กรุณาระบุอายุเด็กให้ถูกต้อง (0–17 ปี)" },
+        {
+          error:
+            "กรุณาระบุอายุเด็กให้ถูกต้อง (0–17 ปี)",
+        },
         { status: 400 }
       );
     }
 
-    const freeChildren = childAges.filter((age: number) => age >= 0 && age <= 8).length;
+    const freeChildren = childAges.filter(
+      (age: number) => age >= 0 && age <= 8
+    ).length;
 
-const paidChildren = childAges.filter((age: number) => age >= 9 && age <= 14).length;
+    const paidChildren = childAges.filter(
+      (age: number) => age >= 9 && age <= 14
+    ).length;
 
-const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).length;
+    const adultChildren = childAges.filter(
+      (age: number) => age >= 15 && age <= 17
+    ).length;
+
     const effectiveAdults = adults + adultChildren;
+
     const totalGuests = adults + childAges.length;
+
     const mainGuests = effectiveAdults + paidChildren;
 
+    // =========================================
+    // ตรวจสอบจำนวนผู้เข้าพัก
+    // =========================================
+
     if (room.id === "house4") {
-      if (effectiveAdults > 5 || mainGuests > 5 || freeChildren > 1 || totalGuests > 6) {
+      if (
+        effectiveAdults > 5 ||
+        mainGuests > 5 ||
+        freeChildren > 1 ||
+        totalGuests > 6
+      ) {
         return NextResponse.json(
-          { error: "บ้านสุขใจรองรับผู้ใหญ่และเด็กอายุ 9–14 ปีรวมสูงสุด 5 คน และเด็กอายุไม่เกิน 8 ปีที่นอนร่วมกับผู้ปกครองได้ฟรีสูงสุด 1 คน (รวมไม่เกิน 6 คน)" },
+          {
+            error:
+              "บ้านสุขใจรองรับผู้ใหญ่และเด็กอายุ 9–14 ปีรวมสูงสุด 5 คน และเด็กอายุไม่เกิน 8 ปีที่นอนร่วมกับผู้ปกครองได้ฟรีสูงสุด 1 คน (รวมไม่เกิน 6 คน)",
+          },
           { status: 400 }
         );
       }
     } else {
       if (effectiveAdults > 3 || totalGuests > 4) {
         return NextResponse.json(
-          { error: "บ้านพักหลังนี้รองรับผู้ใหญ่สูงสุด 3 คน และผู้เข้าพักรวมไม่เกิน 4 คน" },
+          {
+            error:
+              "บ้านพักหลังนี้รองรับผู้ใหญ่สูงสุด 3 คน และผู้เข้าพักรวมไม่เกิน 4 คน",
+          },
           { status: 400 }
         );
       }
-      if (effectiveAdults === 3 && (paidChildren > 0 || freeChildren > 1)) {
+
+      if (
+        effectiveAdults === 3 &&
+        (paidChildren > 0 || freeChildren > 1)
+      ) {
         return NextResponse.json(
-          { error: "เมื่อมีผู้ใหญ่ 3 คน สามารถเข้าพักพร้อมเด็กอายุไม่เกิน 8 ปีได้เพียง 1 คน" },
+          {
+            error:
+              "เมื่อมีผู้ใหญ่ 3 คน สามารถเข้าพักพร้อมเด็กอายุไม่เกิน 8 ปีได้เพียง 1 คน",
+          },
           { status: 400 }
         );
       }
-      if (effectiveAdults === 2 && paidChildren > 1) {
+
+      if (
+        effectiveAdults === 2 &&
+        paidChildren > 1
+      ) {
         return NextResponse.json(
-          { error: "เด็กอายุ 9–14 ปีสามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนได้สูงสุด 1 คนต่อบ้านพัก" },
-          { status: 400 }
-        );
-      }
-      if (effectiveAdults === 3 && (paidChildren > 0 || freeChildren > 1)) {
-        return NextResponse.json(
-          { error: "เมื่อมีผู้ใหญ่ 3 คน สามารถเข้าพักพร้อมเด็กอายุไม่เกิน 8 ปีได้เพียง 1 คน" },
-          { status: 400 }
-        );
-      }
-      if (effectiveAdults === 2 && paidChildren > 1) {
-        return NextResponse.json(
-          { error: "เด็กอายุ 9–14 ปีสามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนได้สูงสุด 1 คนต่อบ้านพัก" },
+          {
+            error:
+              "เด็กอายุ 9–14 ปีสามารถเข้าพักร่วมกับผู้ใหญ่ 2 คนได้สูงสุด 1 คนต่อบ้านพัก",
+          },
           { status: 400 }
         );
       }
@@ -194,10 +210,9 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
     // pending = ล็อก 10 นาที
     // =========================================
 
-    const pendingExpireTime =
-      new Date(
-        Date.now() - 10 * 60 * 1000
-      ).toISOString();
+    const pendingExpireTime = new Date(
+      Date.now() - 10 * 60 * 1000
+    ).toISOString();
 
     const {
       data: existingBookings,
@@ -230,15 +245,14 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
     }
 
     // =========================================
-    // 5. ถ้ามี Booking ชนกัน
+    // 5. ตรวจสอบ Booking ที่ชนกัน
     // =========================================
 
     if (
       existingBookings &&
       existingBookings.length > 0
     ) {
-      const existingBooking =
-        existingBookings[0];
+      const existingBooking = existingBookings[0];
 
       return NextResponse.json(
         {
@@ -262,14 +276,8 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
         "id, room_id, blocked_date, reason"
       )
       .eq("room_id", data.room_id)
-      .gte(
-        "blocked_date",
-        data.check_in
-      )
-      .lt(
-        "blocked_date",
-        data.check_out
-      );
+      .gte("blocked_date", data.check_in)
+      .lt("blocked_date", data.check_out);
 
     if (blockedError) {
       console.error(
@@ -286,10 +294,7 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
       );
     }
 
-    if (
-      blockedDates &&
-      blockedDates.length > 0
-    ) {
+    if (blockedDates && blockedDates.length > 0) {
       return NextResponse.json(
         {
           error:
@@ -305,83 +310,25 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
     // ไม่ใช้ total_price จาก Browser
     // =========================================
 
-    const bookingResult =
-      calculatePrice(room, {
-        roomId: room.id,
-        checkIn: new Date(
-          data.check_in
-        ),
-        checkOut: new Date(
-          data.check_out
-        ),
-        adults,
-        children,
-        childAges,
-      });
+    const bookingResult = calculatePrice(room, {
+      roomId: room.id,
+      checkIn: new Date(data.check_in),
+      checkOut: new Date(data.check_out),
+      adults,
+      children,
+      childAges,
+    });
 
-    const roomTotal =
-      bookingResult.grandTotal;
+    const roomTotal = bookingResult.grandTotal;
 
     // =========================================
-    // 7.1 ตรวจสอบอาหารเย็นจาก Server
-    // ราคาอ้างอิงจากเมนูกลางเท่านั้น
-    // ไม่เชื่อราคา/ยอดรวมจาก Browser
-    // =========================================
-
-    const rawDinnerItems = Array.isArray(data.dinner_items)
-      ? data.dinner_items
-      : [];
-
-    const dinnerItems: Array<{
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-}> = rawDinnerItems.flatMap(
-  (rawItem: { id?: string | number; quantity?: number | string }) => {
-    const menuItem = DINNER_MENU.find(
-      (item) => item.id === String(rawItem?.id ?? "")
-    );
-
-    const quantity = Math.floor(
-      Number(rawItem?.quantity ?? 0)
-    );
-
-    if (!menuItem || quantity <= 0) {
-      return [];
-    }
-
-    return [
-      {
-        id: menuItem.id,
-        name: menuItem.name,
-        price: menuItem.price,
-        quantity: Math.min(quantity, 20),
-      },
-    ];
-  }
-);
-
-    const dinnerTotal = dinnerItems.reduce(
-      (sum, item) =>
-        sum + item.price * item.quantity,
-      0
-    );
-
-
-    // ยืนยันชนิดข้อมูลให้เป็น array ปลอดภัยสำหรับฐานข้อมูล
-    const safeDinnerItems = dinnerItems;
-
-    // =========================================
-    // 8. ตรวจสอบ "วิถีบ้านป่า"
+    // 8. ตรวจสอบกิจกรรมวิถีบ้านป่า
     // =========================================
 
     const natureExperienceSelected =
       data.nature_experience_selected === true;
 
-    let natureExperienceDate:
-      | string
-      | null = null;
+    let natureExperienceDate: string | null = null;
 
     let natureExperienceParticipants = 0;
 
@@ -391,15 +338,11 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
       natureExperienceDate =
         data.nature_experience_date;
 
-      natureExperienceParticipants =
-        Number(
-          data.nature_experience_participants ??
-            0
-        );
+      natureExperienceParticipants = Number(
+        data.nature_experience_participants ?? 0
+      );
 
-      // -----------------------------
       // ต้องมีวันที่กิจกรรม
-      // -----------------------------
 
       if (!natureExperienceDate) {
         return NextResponse.json(
@@ -411,15 +354,11 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
         );
       }
 
-      // -----------------------------
       // วันที่กิจกรรมต้องอยู่ในช่วงเข้าพัก
-      // -----------------------------
 
       if (
-        natureExperienceDate <
-          data.check_in ||
-        natureExperienceDate >=
-          data.check_out
+        natureExperienceDate < data.check_in ||
+        natureExperienceDate >= data.check_out
       ) {
         return NextResponse.json(
           {
@@ -430,9 +369,7 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
         );
       }
 
-      // -----------------------------
-      // ตรวจว่าวันนี้เปิดกิจกรรมหรือไม่
-      // -----------------------------
+      // ตรวจสอบวันที่เปิดกิจกรรม
 
       if (
         !isNatureExperienceAvailable(
@@ -448,9 +385,7 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
         );
       }
 
-      // -----------------------------
-      // ตรวจจำนวนผู้เข้าร่วม
-      // -----------------------------
+      // ตรวจสอบจำนวนผู้เข้าร่วม
 
       if (
         !Number.isInteger(
@@ -467,11 +402,7 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
         );
       }
 
-      // ป้องกันการส่งจำนวนผิดปกติจาก Browser
-      if (
-        natureExperienceParticipants >
-        20
-      ) {
+      if (natureExperienceParticipants > 20) {
         return NextResponse.json(
           {
             error:
@@ -481,11 +412,7 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
         );
       }
 
-      // -----------------------------
-      // คำนวณราคากิจกรรม
-      //
-      // 899 บาท / คน
-      // -----------------------------
+      // คำนวณราคากิจกรรมจาก Server
 
       natureExperienceTotal =
         calculateNatureExperienceTotal(
@@ -494,9 +421,7 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
           true
         );
 
-      if (
-        natureExperienceTotal <= 0
-      ) {
+      if (natureExperienceTotal <= 0) {
         return NextResponse.json(
           {
             error:
@@ -509,11 +434,13 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
 
     // =========================================
     // 9. รวมยอดจาก Server
+    //
+    // ค่าที่พัก + กิจกรรม
+    // ไม่รวมค่าอาหารเย็น
     // =========================================
 
     const finalTotalPrice =
-      roomTotal +
-      natureExperienceTotal;
+      roomTotal + natureExperienceTotal;
 
     // =========================================
     // 10. สร้าง Booking Code
@@ -533,23 +460,25 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
         .slice(-4)}`;
 
     // =========================================
-    // 11. เตรียมข้อมูลที่จะบันทึก
+    // 11. เตรียมข้อมูล Booking
     //
-    // เราไม่เอา data จาก Browser
-    // ไป insert ทั้งก้อนแล้ว
+    // ไม่มีการสั่งอาหารเย็นในขั้นตอนนี้
     // =========================================
 
     const bookingData = {
       room_id: room.id,
 
-      guest_name:
-        String(data.guest_name ?? "").trim(),
+      guest_name: String(
+        data.guest_name ?? ""
+      ).trim(),
 
-      email:
-        String(data.email ?? "").trim(),
+      email: String(
+        data.email ?? ""
+      ).trim(),
 
-      phone:
-        String(data.phone ?? "").trim(),
+      phone: String(
+        data.phone ?? ""
+      ).trim(),
 
       check_in: data.check_in,
 
@@ -561,7 +490,7 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
 
       child_ages: childAges,
 
-      // ใช้ราคาที่ Server คำนวณ
+      // ราคาที่ Server คำนวณ
       total_price: finalTotalPrice,
 
       booking_status: "pending",
@@ -589,12 +518,15 @@ const adultChildren = childAges.filter((age: number) => age >= 15 && age <= 17).
         natureExperienceTotal,
 
       // =====================================
-      // อาหารเย็นสั่งล่วงหน้า
-      // ไม่รวมใน total_price
+      // อาหารเย็น
+      //
+      // ยังไม่สั่งในขั้นตอนจองที่พัก
+      // ลูกค้าจะสั่งภายหลังโดยใช้ Booking Code
       // =====================================
 
-      dinner_items: safeDinnerItems,
-      dinner_total: dinnerTotal,
+      dinner_items: [],
+
+      dinner_total: 0,
     };
 
     // =========================================

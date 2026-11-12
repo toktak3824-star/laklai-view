@@ -6,6 +6,21 @@ export const runtime = "nodejs";
 
 const BUCKET = "payment-slips";
 
+// ==========================================
+// PAYMENT TYPE
+// ==========================================
+
+type PaymentRecord = {
+  id: string;
+  booking_id: string;
+  amount: number | string | null;
+  slip_url: string | null;
+  verified: boolean | null;
+  verified_at: string | null;
+  verified_by: string | null;
+  created_at: string;
+};
+
 export async function GET() {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json(
@@ -15,91 +30,169 @@ export async function GET() {
   }
 
   try {
-    const { data, error } = await supabaseAdmin
-      .from("bookings")
-      .select("*")
-      .order("created_at", { ascending: false });
+    // ==========================================
+    // 1. ดึงรายการจองทั้งหมด
+    // ==========================================
 
-    if (error) {
-      console.error("ADMIN BOOKINGS ERROR =", error);
+    const { data: bookings, error: bookingError } =
+      await supabaseAdmin
+        .from("bookings")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (bookingError) {
+      console.error("ADMIN BOOKINGS ERROR =", bookingError);
 
       return NextResponse.json(
-        { error: error.message },
+        { error: "ไม่สามารถโหลดรายการจองได้" },
         { status: 500 }
       );
     }
 
-    /*
-      สร้าง Signed URL สำหรับสลิป
-      เพื่อให้ Admin สามารถกด "ดูสลิป"
-      ได้จากทั้งคอมพิวเตอร์และมือถือ
-    */
-    const bookingsWithSlipUrl = await Promise.all(
-      (data ?? []).map(async (booking) => {
-        if (!booking.slip_url) {
-          return booking;
+    const bookingList = bookings ?? [];
+
+    const bookingIds = bookingList.map(
+      (booking) => booking.id
+    );
+
+    // ==========================================
+    // 2. ดึงประวัติการรับเงินจริง
+    // ==========================================
+
+    let payments: PaymentRecord[] = [];
+
+    if (bookingIds.length > 0) {
+      const { data: paymentData, error: paymentError } =
+        await supabaseAdmin
+          .from("payments")
+          .select("*")
+          .in("booking_id", bookingIds)
+          .order("created_at", { ascending: true });
+
+      if (paymentError) {
+        console.error("ADMIN PAYMENTS ERROR =", paymentError);
+
+        return NextResponse.json(
+          { error: "ไม่สามารถโหลดประวัติการชำระเงินได้" },
+          { status: 500 }
+        );
+      }
+
+      payments = (paymentData ?? []) as PaymentRecord[];
+    }
+
+    // ==========================================
+    // 3. รวมยอดรับเงินจริงแยกตามรายการจอง
+    // ==========================================
+
+    const paymentsByBooking = new Map<
+      string,
+      PaymentRecord[]
+    >();
+
+    for (const payment of payments) {
+      const key = payment.booking_id;
+
+      if (!paymentsByBooking.has(key)) {
+        paymentsByBooking.set(key, []);
+      }
+
+      paymentsByBooking.get(key)!.push(payment);
+    }
+
+    // ==========================================
+    // 4. สร้าง Signed URL สำหรับเปิดดูสลิป
+    // ==========================================
+
+    const bookingsWithDetails = await Promise.all(
+      bookingList.map(async (booking) => {
+        let slipUrl = booking.slip_url;
+
+        if (slipUrl) {
+          const slipPath = String(slipUrl).trim();
+
+          if (
+            !slipPath.startsWith("http://") &&
+            !slipPath.startsWith("https://")
+          ) {
+            const { data: signedData, error: signedError } =
+              await supabaseAdmin.storage
+                .from(BUCKET)
+                .createSignedUrl(slipPath, 60 * 10);
+
+            if (signedError || !signedData?.signedUrl) {
+              console.error(
+                "CREATE BOOKING SLIP SIGNED URL ERROR =",
+                signedError
+              );
+
+              slipUrl = slipPath;
+            } else {
+              slipUrl = signedData.signedUrl;
+            }
+          }
         }
 
-        const slipPath = String(booking.slip_url).trim();
+        // ประวัติการชำระเงินของรายการจองนี้
+        const bookingPayments =
+          paymentsByBooking.get(booking.id) ?? [];
 
-        /*
-          ถ้าในฐานข้อมูลเป็น URL เต็มอยู่แล้ว
-          ไม่ต้องสร้าง Signed URL ซ้ำ
-        */
-        if (
-          slipPath.startsWith("http://") ||
-          slipPath.startsWith("https://")
-        ) {
-          return {
-            ...booking,
-            slip_url: slipPath,
-          };
-        }
+        // เลือกเฉพาะรายการที่ตรวจสอบแล้ว
+        const verifiedPayments = bookingPayments.filter(
+          (payment) => payment.verified === true
+        );
 
-        /*
-          ถ้าเป็น path ของไฟล์ใน Storage
-          ให้สร้าง Signed URL สำหรับ Admin
-        */
-        const { data: signedData, error: signedError } =
-          await supabaseAdmin.storage
-            .from(BUCKET)
-            .createSignedUrl(
-              slipPath,
-              60 * 10
-            );
+        // รวมยอดรับเงินจริง
+        const receivedAmount = verifiedPayments.reduce(
+          (sum, payment) =>
+            sum + Number(payment.amount ?? 0),
+          0
+        );
 
-        if (signedError || !signedData?.signedUrl) {
-          console.error(
-            "CREATE BOOKING SLIP SIGNED URL ERROR =",
-            signedError
-          );
+        const totalPrice = Number(
+          booking.total_price ?? 0
+        );
 
-          /*
-            ถ้าสร้าง Signed URL ไม่สำเร็จ
-            ให้คงค่าเดิมไว้ก่อน
-            เพื่อไม่ให้รายการจองหาย
-          */
-          return {
-            ...booking,
-            slip_url: slipPath,
-          };
-        }
+        // ตรวจสอบว่ามีประวัติการชำระเงินหรือไม่
+        const hasPaymentHistory =
+          bookingPayments.length > 0;
+
+        // คำนวณยอดคงเหลือ
+        // หากไม่มีประวัติ จะไม่สมมติยอดคงเหลือ
+        const remainingAmount = hasPaymentHistory
+          ? Math.max(totalPrice - receivedAmount, 0)
+          : null;
 
         return {
           ...booking,
-          slip_url: signedData.signedUrl,
+
+          // URL สำหรับเปิดดูสลิป
+          slip_url: slipUrl,
+
+          // ประวัติการรับเงินจริง
+          payments: bookingPayments,
+
+          // ยอดที่ตรวจสอบแล้ว
+          received_amount: receivedAmount,
+
+          // ยอดคงเหลือ
+          remaining_amount: remainingAmount,
+
+          // มีประวัติการรับเงินจริงหรือไม่
+          has_payment_history: hasPaymentHistory,
+
+          // รายการเก่าที่ยังต้องตรวจสอบ
+          needs_payment_review:
+            booking.booking_status === "confirmed" &&
+            !hasPaymentHistory,
         };
       })
     );
 
-    return NextResponse.json(
-      bookingsWithSlipUrl
-    );
-  } catch (err) {
-    console.error(
-      "ADMIN BOOKINGS SERVER ERROR =",
-      err
-    );
+    return NextResponse.json(bookingsWithDetails);
+
+  } catch (error) {
+    console.error("ADMIN BOOKINGS SERVER ERROR =", error);
 
     return NextResponse.json(
       { error: "Server Error" },

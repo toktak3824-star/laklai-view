@@ -12,7 +12,7 @@ export default function Navbar() {
     <header className="fixed inset-x-0 top-0 z-50">
       <nav className="mx-auto border-b border-white/10 bg-black/35 px-4 backdrop-blur-md sm:px-6">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between">
-          
+
           {/* Logo */}
           <Link
             href="/"
@@ -22,13 +22,14 @@ export default function Navbar() {
             <span className="text-[10px] tracking-[0.28em] text-green-300">
               LAKLAI VIEW
             </span>
+
             <span className="mt-1 text-xl font-bold tracking-wide sm:text-2xl">
               หลักลาย View
             </span>
           </Link>
 
           {/* Desktop Menu */}
-          <div className="hidden items-center gap-7 md:flex">
+          <div className="hidden items-center gap-6 md:flex">
             <Link
               href="/"
               className="text-sm font-medium text-white/90 transition hover:text-green-300"
@@ -40,22 +41,29 @@ export default function Navbar() {
               href="/#rooms"
               className="text-sm font-medium text-white/90 transition hover:text-green-300"
             >
-              บ้านพัก
+              จองบ้านพัก
             </Link>
 
             <Link
-              href="/coffee"
+              href="/nature-experience"
               className="text-sm font-medium text-white/90 transition hover:text-green-300"
             >
-              Coffee Shop
+              วิถีบ้านป่า
             </Link>
 
-            <Link 
-  href="/contact"
-  className="text-sm font-medium text-white/90 transition hover:text-green-300"
->
-  ติดต่อเรา
-</Link>
+            <Link
+              href="/dinner-menu"
+              className="text-sm font-medium text-white/90 transition hover:text-green-300"
+            >
+              สั่งอาหารล่วงหน้า
+            </Link>
+
+            <Link
+              href="/contact"
+              className="text-sm font-medium text-white/90 transition hover:text-green-300"
+            >
+              ติดต่อเรา
+            </Link>
 
             <Link
               href="/#rooms"
@@ -89,6 +97,7 @@ export default function Navbar() {
         {open && (
           <div className="border-t border-white/10 pb-5 pt-4 md:hidden">
             <div className="flex flex-col gap-1">
+
               <Link
                 href="/"
                 onClick={closeMenu}
@@ -102,24 +111,32 @@ export default function Navbar() {
                 onClick={closeMenu}
                 className="rounded-xl px-4 py-3.5 text-base font-medium text-white transition hover:bg-white/10"
               >
-                บ้านพัก
+                🏡 จองบ้านพัก
               </Link>
 
               <Link
-                href="/coffee"
+                href="/nature-experience"
                 onClick={closeMenu}
                 className="rounded-xl px-4 py-3.5 text-base font-medium text-white transition hover:bg-white/10"
               >
-                ☕ Coffee Shop
+                🌿 กิจกรรมวิถีบ้านป่า
               </Link>
 
-              <Link 
-  href="/contact"
-  onClick={closeMenu}
-  className="rounded-xl px-4 py-3.5 text-base font-medium text-white transition hover:bg-white/10"
->
-  ติดต่อเรา
-</Link>
+              <Link
+                href="/dinner-menu"
+                onClick={closeMenu}
+                className="rounded-xl px-4 py-3.5 text-base font-medium text-white transition hover:bg-white/10"
+              >
+                🍲 สั่งอาหารล่วงหน้า
+              </Link>
+
+              <Link
+                href="/contact"
+                onClick={closeMenu}
+                className="rounded-xl px-4 py-3.5 text-base font-medium text-white transition hover:bg-white/10"
+              >
+                ติดต่อเรา
+              </Link>
 
               <Link
                 href="/#rooms"
@@ -128,6 +145,7 @@ export default function Navbar() {
               >
                 จองที่พัก
               </Link>
+
             </div>
           </div>
         )}

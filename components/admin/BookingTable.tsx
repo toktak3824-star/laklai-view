@@ -2,18 +2,91 @@
 
 import { useEffect, useState } from "react";
 
+type Payment = {
+  id: string;
+  amount: number;
+  verified: boolean;
+  slip_url?: string | null;
+  created_at?: string;
+};
+
+type Booking = {
+  id: string;
+  booking_code?: string;
+  guest_name?: string;
+  email?: string;
+  phone?: string;
+  room_id: string;
+  check_in: string;
+  check_out: string;
+  adults?: number;
+  child_ages?: number[];
+  children?: number;
+  total_price: number;
+  booking_status: string;
+  payment_status: string;
+  slip_url?: string | null;
+  nature_experience_selected?: boolean;
+  nature_experience_date?: string;
+  nature_experience_participants?: number;
+  nature_experience_total?: number;
+  dinner_items?: {
+    id?: string | number;
+    name?: string;
+    quantity?: number | string;
+    price?: number | string;
+  }[];
+  dinner_total?: number;
+  payments?: Payment[];
+  received_amount?: number;
+  remaining_amount?: number | null;
+  has_payment_history?: boolean;
+  needs_payment_review?: boolean;
+};
+
+const money = (value: number) =>
+  `฿${Number(value || 0).toLocaleString("th-TH")}`;
+
 export default function BookingTable() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     loadBookings();
   }, []);
 
   async function loadBookings() {
-    const res = await fetch("/api/admin/bookings");
-    const data = await res.json();
-    setBookings(data);
+    try {
+      setLoading(true);
+      setLoadError("");
+
+      const res = await fetch("/api/admin/bookings", {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "โหลดข้อมูลไม่สำเร็จ");
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error("รูปแบบข้อมูลรายการจองไม่ถูกต้อง");
+      }
+
+      setBookings(data);
+    } catch (error) {
+      console.error("LOAD BOOKINGS ERROR =", error);
+
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "ไม่สามารถโหลดรายการจองได้"
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   function roomName(roomId: string) {
@@ -32,14 +105,54 @@ export default function BookingTable() {
   }
 
   // =========================================
+  // คำนวณข้อมูลสรุปรายได้
+  // =========================================
+
+  const confirmedBookings = bookings.filter(
+    (booking) => booking.booking_status === "confirmed"
+  );
+
+  const cancelledBookings = bookings.filter(
+    (booking) => booking.booking_status === "cancelled"
+  );
+
+  const pendingBookings = bookings.filter(
+    (booking) =>
+      booking.booking_status !== "confirmed" &&
+      booking.booking_status !== "cancelled"
+  );
+
+  const confirmedTotal = confirmedBookings.reduce(
+    (sum, booking) => sum + Number(booking.total_price || 0),
+    0
+  );
+
+  const receivedTotal = confirmedBookings.reduce(
+    (sum, booking) => sum + Number(booking.received_amount || 0),
+    0
+  );
+
+  const bookingsWithPaymentHistory = confirmedBookings.filter(
+    (booking) => booking.has_payment_history
+  );
+
+  const remainingTotal = bookingsWithPaymentHistory.reduce(
+    (sum, booking) => sum + Number(booking.remaining_amount || 0),
+    0
+  );
+
+  const needsReviewCount = confirmedBookings.filter(
+    (booking) => booking.needs_payment_review
+  ).length;
+
+  // =========================================
   // แสดงรายละเอียดผู้เข้าพัก
   // =========================================
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function GuestDetails({ booking }: { booking: any }) {
+  function GuestDetails({ booking }: { booking: Booking }) {
     const adults = Number(booking.adults ?? 0);
 
-    const childAges: number[] = Array.isArray(booking.child_ages)
+    const childAges = Array.isArray(booking.child_ages)
       ? booking.child_ages.map(Number)
       : [];
 
@@ -55,8 +168,7 @@ export default function BookingTable() {
       (age) => age >= 15
     );
 
-    const effectiveAdults =
-      adults + adultChildren.length;
+    const effectiveAdults = adults + adultChildren.length;
 
     const totalGuests =
       adults + childAges.length;
@@ -68,31 +180,21 @@ export default function BookingTable() {
 
     return (
       <div className="min-w-[220px] space-y-2 text-sm">
-
-        {/* จำนวนผู้ใหญ่ */}
         <div className="font-semibold text-stone-900">
           👨 ผู้ใหญ่: {effectiveAdults} คน
         </div>
 
-        {/* เด็ก */}
         <div className="font-semibold text-stone-900">
           👶 เด็ก: {childAges.length} คน
         </div>
 
-        {/* อายุเด็ก */}
         {childAges.length > 0 && (
           <div className="rounded-lg bg-stone-100 p-2 text-stone-700">
-            <div className="font-medium">
-              อายุเด็ก:
-            </div>
-
-            <div>
-              {childAges.join(", ")} ปี
-            </div>
+            <div className="font-medium">อายุเด็ก:</div>
+            <div>{childAges.join(", ")} ปี</div>
           </div>
         )}
 
-        {/* เด็กเล็ก */}
         {youngChildren.length > 0 && (
           <div className="text-green-700">
             🟢 เด็ก 0–8 ปี: {youngChildren.length} คน
@@ -102,7 +204,6 @@ export default function BookingTable() {
           </div>
         )}
 
-        {/* เด็กโต */}
         {olderChildren.length > 0 && (
           <div className="text-orange-700">
             🟠 เด็ก 9–14 ปี: {olderChildren.length} คน
@@ -112,7 +213,6 @@ export default function BookingTable() {
           </div>
         )}
 
-        {/* เด็ก 15+ */}
         {adultChildren.length > 0 && (
           <div className="text-red-700">
             🔴 อายุ 15 ปีขึ้นไป: {adultChildren.length} คน
@@ -122,28 +222,24 @@ export default function BookingTable() {
           </div>
         )}
 
-        {/* รวมทั้งหมด */}
         <div className="border-t border-stone-200 pt-2 font-bold text-stone-900">
           👥 รวมทั้งหมด: {totalGuests} คน
         </div>
 
-        {/* ที่นอนเสริม */}
         {needsExtraBed && (
           <div className="rounded-lg bg-amber-50 p-2 font-semibold text-amber-800">
             🛏️ ต้องเตรียมที่นอนเสริม
           </div>
         )}
-
       </div>
     );
   }
 
   // =========================================
-  // แสดงอาหารเย็นที่ลูกค้าสั่งล่วงหน้า
+  // แสดงอาหารเย็น
   // =========================================
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function DinnerDetails({ booking }: { booking: any }) {
+  function DinnerDetails({ booking }: { booking: Booking }) {
     const dinnerItems = Array.isArray(booking.dinner_items)
       ? booking.dinner_items
       : [];
@@ -163,407 +259,536 @@ export default function BookingTable() {
         </div>
 
         <div className="space-y-2">
-          {dinnerItems.map(
-            (
-              item: {
-                id?: string | number;
-                name?: string;
-                quantity?: number | string;
-                price?: number | string;
-              },
-              index: number
-            ) => {
-              const quantity = Number(item.quantity ?? 0);
-              const price = Number(item.price ?? 0);
+          {dinnerItems.map((item, index) => (
+            <div
+              key={`${item.id ?? "dinner"}-${index}`}
+              className="border-b border-orange-100 pb-2 last:border-b-0 last:pb-0"
+            >
+              <div className="font-semibold text-stone-800">
+                {item.name ?? "ไม่ระบุชื่ออาหาร"}
+              </div>
 
-              return (
-                <div
-                  key={`${item.id ?? "dinner"}-${index}`}
-                  className="border-b border-orange-100 pb-2 last:border-b-0 last:pb-0"
-                >
-                  <div className="font-semibold text-stone-800">
-                    {item.name ?? "ไม่ระบุชื่ออาหาร"}
-                  </div>
+              <div className="text-stone-600">
+                จำนวน {Number(item.quantity ?? 0)} ที่
+              </div>
 
-                  <div className="text-stone-600">
-                    จำนวน {quantity} ที่
-                  </div>
-
-                  {price > 0 && (
-                    <div className="text-xs text-stone-500">
-                      ฿{price.toLocaleString()} / ที่
-                    </div>
-                  )}
+              {Number(item.price ?? 0) > 0 && (
+                <div className="text-xs text-stone-500">
+                  ฿{Number(item.price).toLocaleString()} / ที่
                 </div>
-              );
-            }
-          )}
+              )}
+            </div>
+          ))}
         </div>
 
         <div className="mt-3 border-t border-orange-200 pt-2 font-bold text-orange-800">
-          รวมค่าอาหาร: ฿
-          {Number(
-            booking.dinner_total ?? 0
-          ).toLocaleString()}
+          รวมค่าอาหาร: {money(Number(booking.dinner_total ?? 0))}
         </div>
       </div>
     );
   }
 
+  // =========================================
+  // ยืนยันการจองและบันทึกเงินจริง
+  // =========================================
+
+  async function confirmBooking(booking: Booking) {
+    const total = Number(booking.total_price || 0);
+
+    const suggestedDeposit =
+      total >= 4000
+        ? Math.ceil(total / 2)
+        : total;
+
+    if (!booking.slip_url) {
+      alert("ยังไม่มีสลิป กรุณาตรวจสอบก่อนอนุมัติ");
+      return;
+    }
+
+    const amountInput = window.prompt(
+      `ตรวจสอบยอดชำระของ ${booking.booking_code}\n\n` +
+        `มูลค่าการจอง: ${money(total)}\n` +
+        `ยอดมัดจำที่แนะนำ: ${money(suggestedDeposit)}\n\n` +
+        `กรอกยอดเงินจริงตามสลิปที่ตรวจสอบแล้ว (บาท)`
+    );
+
+    if (amountInput === null) {
+      return;
+    }
+
+    const amount = Number(amountInput.replace(/,/g, "").trim());
+
+    if (
+      !Number.isSafeInteger(amount) ||
+      amount <= 0 ||
+      amount > total
+    ) {
+      alert("กรุณากรอกยอดเงินจริงเป็นจำนวนเต็ม และไม่เกินมูลค่าการจอง");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `ยืนยันการรับเงินและการจองหรือไม่?\n\n` +
+        `เลขจอง: ${booking.booking_code}\n` +
+        `มูลค่าการจอง: ${money(total)}\n` +
+        `รับเงินจริง: ${money(amount)}\n` +
+        `ยอดคงเหลือหลังรายการนี้: ${money(total - amount)}`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/confirm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: booking.id,
+          amount,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "ไม่สามารถบันทึกการชำระเงินได้"
+        );
+      }
+
+      alert(
+        `บันทึกยอดรับเงินจริงเรียบร้อยแล้ว\n\n` +
+          `ยอดรับสะสม: ${money(data.receivedAmount)}\n` +
+          `ยอดคงเหลือ: ${money(data.remainingAmount)}\n` +
+          `อีเมล: ${data.emailSent ? "ส่งแล้ว" : "ไม่ได้ส่ง"}`
+      );
+
+      await loadBookings();
+    } catch (error) {
+      console.error("CONFIRM BOOKING ERROR =", error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "ไม่สามารถยืนยันการจองได้"
+      );
+    }
+  }
+
+  // =========================================
+  // ยกเลิกการจอง
+  // =========================================
+
+  async function cancelBooking(booking: Booking) {
+    const reason = window.prompt(
+      "กรุณาระบุเหตุผลในการยกเลิกการจอง\n\n" +
+        "ตัวอย่าง:\n" +
+        "1. ลูกค้าขอยกเลิกการจอง\n" +
+        "2. ตรวจพบปัญหาเกี่ยวกับการจอง\n" +
+        "3. บ้านพักไม่สามารถให้บริการได้\n" +
+        "4. อื่น ๆ"
+    );
+
+    if (!reason || !reason.trim()) {
+      alert("กรุณาระบุเหตุผลก่อนยกเลิกการจอง");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `ยืนยันการยกเลิกการจอง ${booking.booking_code} หรือไม่?\n\n` +
+        `เหตุผล:\n${reason.trim()}`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: booking.id,
+          reason: reason.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "ไม่สามารถยกเลิกการจองได้"
+        );
+      }
+
+      if (data.emailSent === false) {
+        alert(
+          "ยกเลิกการจองเรียบร้อยแล้ว แต่ส่งอีเมลไม่สำเร็จ\n" +
+            "กรุณาตรวจสอบภายหลัง"
+        );
+      } else {
+        alert("ยกเลิกการจองเรียบร้อยแล้ว");
+      }
+
+      await loadBookings();
+    } catch (error) {
+      console.error("CANCEL BOOKING ERROR =", error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "ไม่สามารถยกเลิกการจองได้"
+      );
+    }
+  }
+
+  // =========================================
+  // หน้าจอ
+  // =========================================
+
+  if (loading) {
+    return (
+      <div className="mt-10 rounded-2xl bg-stone-50 p-8 text-center">
+        กำลังโหลดข้อมูลการจอง...
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mt-10 rounded-2xl bg-red-50 p-6 text-red-700">
+        <p className="font-bold">โหลดข้อมูลไม่สำเร็จ</p>
+        <p>{loadError}</p>
+        <button
+          onClick={loadBookings}
+          className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-white"
+        >
+          ลองอีกครั้ง
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="mt-10 overflow-x-auto rounded-2xl bg-stone-50 p-6 shadow">
+    <div className="mt-10 space-y-6">
 
-      <h2 className="mb-6 text-2xl font-bold text-stone-900">
-        📋 รายการจองทั้งหมด
-      </h2>
+      {/* ===================================== */}
+      {/* สรุปรายได้ */}
+      {/* ===================================== */}
 
-      <table className="w-full min-w-[1450px] text-stone-800">
+      <section className="rounded-2xl bg-stone-50 p-6 shadow">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold text-stone-900">
+            📊 สรุปรายได้ หลักลาย view วิถีบ้านป่า
+          </h2>
 
-        <thead>
-          <tr className="border-b border-stone-300">
+          <button
+            onClick={loadBookings}
+            className="rounded-lg bg-stone-800 px-4 py-2 text-white hover:bg-stone-700"
+          >
+            ↻ รีเฟรชข้อมูล
+          </button>
+        </div>
 
-            <th className="py-3 text-left">
-              เลขจอง
-            </th>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
 
-            <th className="text-left">
-              ลูกค้า
-            </th>
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <div className="text-sm text-blue-700">
+              มูลค่าการจองที่ยืนยันแล้ว
+            </div>
+            <div className="mt-2 text-2xl font-bold text-blue-900">
+              {money(confirmedTotal)}
+            </div>
+            <div className="mt-1 text-xs text-blue-700">
+              {confirmedBookings.length} รายการ
+            </div>
+          </div>
 
-            <th className="text-left">
-              ผู้เข้าพัก
-            </th>
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+            <div className="text-sm text-green-700">
+              เงินรับจริงที่ตรวจสอบแล้ว
+            </div>
+            <div className="mt-2 text-2xl font-bold text-green-900">
+              {money(receivedTotal)}
+            </div>
+            <div className="mt-1 text-xs text-green-700">
+              จากรายการ confirmed
+            </div>
+          </div>
 
-            <th className="text-left">
-              บ้านพัก
-            </th>
+          <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+            <div className="text-sm text-orange-700">
+              ยอดคงเหลือที่มีข้อมูลรองรับ
+            </div>
+            <div className="mt-2 text-2xl font-bold text-orange-900">
+              {money(remainingTotal)}
+            </div>
+            <div className="mt-1 text-xs text-orange-700">
+              เฉพาะรายการที่มีประวัติชำระเงิน
+            </div>
+          </div>
 
-            <th className="text-left">
-              วันที่
-            </th>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <div className="text-sm text-amber-700">
+              รายการเก่าที่ต้องตรวจสอบ
+            </div>
+            <div className="mt-2 text-2xl font-bold text-amber-900">
+              {needsReviewCount}
+            </div>
+            <div className="mt-1 text-xs text-amber-700">
+              ไม่มีประวัติรับเงินจริงในระบบ
+            </div>
+          </div>
 
-            <th className="text-left">
-              วิถีบ้านป่า
-            </th>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+            <div className="text-sm text-red-700">
+              รายการยกเลิก
+            </div>
+            <div className="mt-2 text-2xl font-bold text-red-900">
+              {cancelledBookings.length}
+            </div>
+            <div className="mt-1 text-xs text-red-700">
+              ไม่นำมารวมเป็นรายได้
+            </div>
+          </div>
 
-            <th className="text-left">
-              🍽️ อาหารล่วงหน้า
-            </th>
+        </div>
 
-            <th className="text-left">
-              ยอดเงิน
-            </th>
+        <div className="mt-4 rounded-xl bg-white p-4 text-sm text-stone-600">
+          <p>
+            รายการยืนยันแล้วทั้งหมด {confirmedBookings.length} รายการ
+            {" · "}
+            รอตรวจสอบ {pendingBookings.length} รายการ
+            {" · "}
+            ยกเลิก {cancelledBookings.length} รายการ
+          </p>
 
-            <th className="text-left">
-              สลิป
-            </th>
+          {needsReviewCount > 0 && (
+            <p className="mt-2 text-amber-700">
+              ⚠️ มีรายการจองเก่าที่ยังไม่มีประวัติการรับเงินจริง
+              จึงยังไม่นำยอดเหล่านั้นมาคำนวณเป็นเงินคงเหลือ
+            </p>
+          )}
+        </div>
+      </section>
 
-            <th className="text-left">
-              สถานะ
-            </th>
+      {/* ===================================== */}
+      {/* ตารางรายการจอง */}
+      {/* ===================================== */}
 
-          </tr>
-        </thead>
+      <section className="overflow-x-auto rounded-2xl bg-stone-50 p-6 shadow">
 
-        <tbody>
+        <h2 className="mb-6 text-2xl font-bold text-stone-900">
+          📋 รายการจองทั้งหมด
+        </h2>
 
-          {bookings.map((booking) => (
+        <table className="w-full min-w-[1550px] text-stone-800">
 
-            <tr
-              key={booking.id}
-              className="border-b border-stone-200 hover:bg-white"
-            >
+          <thead>
+            <tr className="border-b border-stone-300">
 
-              {/* เลขจอง */}
-              <td className="py-5 font-semibold">
-                {booking.booking_code ?? "-"}
-              </td>
+              <th className="py-3 text-left">เลขจอง</th>
+              <th className="text-left">ลูกค้า</th>
+              <th className="text-left">ผู้เข้าพัก</th>
+              <th className="text-left">บ้านพัก</th>
+              <th className="text-left">วันที่</th>
+              <th className="text-left">วิถีบ้านป่า</th>
+              <th className="text-left">🍽️ อาหารล่วงหน้า</th>
+              <th className="text-left">มูลค่าจอง</th>
+              <th className="text-left">รับเงินจริง</th>
+              <th className="text-left">คงเหลือ</th>
+              <th className="text-left">สลิป</th>
+              <th className="text-left">สถานะ</th>
 
-              {/* ลูกค้า */}
-              <td>
-                <div className="font-semibold">
-                  {booking.guest_name}
-                </div>
+            </tr>
+          </thead>
 
-                <div className="mt-1 text-xs text-stone-500">
-                  {booking.email}
-                </div>
+          <tbody>
 
-                <div className="text-xs text-stone-500">
-                  {booking.phone}
-                </div>
-              </td>
+            {bookings.map((booking) => (
 
-              {/* ผู้เข้าพัก */}
-              <td>
-                <GuestDetails booking={booking} />
-              </td>
+              <tr
+                key={booking.id}
+                className="border-b border-stone-200 hover:bg-white"
+              >
 
-              {/* บ้านพัก */}
-              <td className="font-medium">
-                {roomName(booking.room_id)}
-              </td>
+                <td className="py-5 font-semibold">
+                  {booking.booking_code ?? "-"}
+                </td>
 
-              {/* วันที่ */}
-              <td>
-                <div>
-                  {booking.check_in}
-                </div>
-
-                <div>
-                  ถึง
-                </div>
-
-                <div>
-                  {booking.check_out}
-                </div>
-              </td>
-
-              {/* วิถีบ้านป่า */}
-              <td>
-                {booking.nature_experience_selected &&
-                Number(booking.nature_experience_participants ?? 0) > 0 ? (
-                  <div className="min-w-[190px] rounded-xl bg-green-50 p-3 text-sm">
-                    <div className="font-bold text-green-800">
-                      🌿 วิถีบ้านป่า
-                    </div>
-
-                    <div className="mt-1 text-stone-700">
-                      📅 {booking.nature_experience_date ?? "-"}
-                    </div>
-
-                    <div className="text-stone-700">
-                      👥{" "}
-                      {Number(
-                        booking.nature_experience_participants ?? 0
-                      )}{" "}
-                      คน
-                    </div>
-
-                    <div className="font-semibold text-green-700">
-                      💰 ฿
-                      {Number(
-                        booking.nature_experience_total ?? 0
-                      ).toLocaleString()}
-                    </div>
+                <td>
+                  <div className="font-semibold">
+                    {booking.guest_name}
                   </div>
-                ) : (
-                  <span className="text-sm text-stone-400">
-                    ไม่ได้เลือก
-                  </span>
-                )}
-              </td>
 
-              {/* อาหารเย็นสั่งล่วงหน้า */}
-              <td>
-                <DinnerDetails booking={booking} />
-              </td>
+                  <div className="mt-1 text-xs text-stone-500">
+                    {booking.email}
+                  </div>
 
-              {/* ยอดเงิน */}
-              <td className="font-semibold">
-                ฿
-                {Number(
-                  booking.total_price
-                ).toLocaleString()}
-              </td>
+                  <div className="text-xs text-stone-500">
+                    {booking.phone}
+                  </div>
+                </td>
 
-              {/* สลิป */}
-              <td>
-                {booking.slip_url ? (
-                  <a
-                    href={booking.slip_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-700"
-                  >
-                    ดูสลิป
-                  </a>
-                ) : (
-                  <span className="text-sm text-stone-400">
-                    ยังไม่มีสลิป
-                  </span>
-                )}
-              </td>
+                <td>
+                  <GuestDetails booking={booking} />
+                </td>
 
-                            {/* สถานะ */}
-              <td className="space-y-2">
-                {/* ปุ่มอนุมัติ: แสดงเฉพาะรายการที่รอตรวจสอบ */}
-                {booking.booking_status === "pending" && (
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const confirmed = window.confirm(
-                          `ต้องการยืนยันการจอง ${booking.booking_code} ใช่หรือไม่?`
-                        );
+                <td className="font-medium">
+                  {roomName(booking.room_id)}
+                </td>
 
-                        if (!confirmed) {
-                          return;
-                        }
+                <td>
+                  <div>{booking.check_in}</div>
+                  <div>ถึง</div>
+                  <div>{booking.check_out}</div>
+                </td>
 
-                        try {
-                          const response = await fetch(
-                            "/api/admin/confirm",
-                            {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                              },
-                              body: JSON.stringify({
-                                id: booking.id,
-                              }),
-                            }
-                          );
+                <td>
+                  {booking.nature_experience_selected &&
+                  Number(booking.nature_experience_participants ?? 0) > 0 ? (
+                    <div className="min-w-[190px] rounded-xl bg-green-50 p-3 text-sm">
 
-                          const data = await response.json();
+                      <div className="font-bold text-green-800">
+                        🌿 วิถีบ้านป่า
+                      </div>
 
-                          if (!response.ok) {
-                            throw new Error(
-                              data.error ||
-                                "ไม่สามารถยืนยันการจองได้"
-                            );
-                          }
+                      <div className="mt-1 text-stone-700">
+                        📅 {booking.nature_experience_date ?? "-"}
+                      </div>
 
-                          alert(
-                            "ยืนยันการจองเรียบร้อยแล้ว\nระบบกำลังส่งอีเมลให้ลูกค้า"
-                          );
+                      <div className="text-stone-700">
+                        👥 {Number(booking.nature_experience_participants ?? 0)} คน
+                      </div>
 
-                          await loadBookings();
-                        } catch (error) {
-                          console.error(
-                            "CONFIRM BOOKING ERROR =",
-                            error
-                          );
+                      <div className="font-semibold text-green-700">
+                        💰 {money(Number(booking.nature_experience_total ?? 0))}
+                      </div>
 
-                          alert(
-                            error instanceof Error
-                              ? error.message
-                              : "ไม่สามารถยืนยันการจองได้ กรุณาลองใหม่อีกครั้ง"
-                          );
-                        }
-                      }}
-                      className="rounded-lg bg-green-600 px-3 py-2 text-white hover:bg-green-700"
+                    </div>
+                  ) : (
+                    <span className="text-sm text-stone-400">
+                      ไม่ได้เลือก
+                    </span>
+                  )}
+                </td>
+
+                <td>
+                  <DinnerDetails booking={booking} />
+                </td>
+
+                <td className="font-semibold">
+                  {money(Number(booking.total_price))}
+                </td>
+
+                <td>
+                  <div className="font-semibold text-green-700">
+                    {money(Number(booking.received_amount || 0))}
+                  </div>
+
+                  {booking.payments?.length ? (
+                    <div className="mt-1 text-xs text-stone-500">
+                      {booking.payments.length} รายการชำระ
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-xs text-amber-700">
+                      ยังไม่มีประวัติ
+                    </div>
+                  )}
+                </td>
+
+                <td>
+                  {booking.remaining_amount === null ? (
+                    <span className="text-xs text-amber-700">
+                      รอตรวจสอบ
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-orange-700">
+                      {money(Number(booking.remaining_amount))}
+                    </span>
+                  )}
+                </td>
+
+                <td>
+                  {booking.slip_url ? (
+                    <a
+                      href={booking.slip_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-700"
                     >
-                      อนุมัติ
-                    </button>
-                  </div>
-                )}
+                      ดูสลิป
+                    </a>
+                  ) : (
+                    <span className="text-sm text-stone-400">
+                      ยังไม่มีสลิป
+                    </span>
+                  )}
+                </td>
 
-                {/* ปุ่มยกเลิก: แสดงทั้ง pending และ confirmed */}
-                {(booking.booking_status === "pending" ||
-                  booking.booking_status === "confirmed") && (
-                  <div className="mt-2">
+                <td className="space-y-2">
+
+                  {booking.booking_status === "pending" && (
                     <button
                       type="button"
-                      onClick={async () => {
-                        const reason = window.prompt(
-                          "กรุณาระบุเหตุผลในการยกเลิกการจอง\n\n" +
-                            "ตัวอย่าง:\n" +
-                            "1. ลูกค้าขอยกเลิกการจอง\n" +
-                            "2. ตรวจพบปัญหาเกี่ยวกับการจอง\n" +
-                            "3. บ้านพักไม่สามารถให้บริการได้\n" +
-                            "4. อื่น ๆ"
-                        );
+                      onClick={() => confirmBooking(booking)}
+                      className="block rounded-lg bg-green-600 px-3 py-2 text-white hover:bg-green-700"
+                    >
+                      อนุมัติ / บันทึกเงิน
+                    </button>
+                  )}
 
-                        if (!reason || !reason.trim()) {
-                          alert("กรุณาระบุเหตุผลก่อนยกเลิกการจอง");
-                          return;
-                        }
-
-                        const confirmed = window.confirm(
-                          `ยืนยันการยกเลิกการจอง ${booking.booking_code} หรือไม่?\n\n` +
-                            `เหตุผล:\n${reason.trim()}`
-                        );
-
-                        if (!confirmed) {
-                          return;
-                        }
-
-                        try {
-                          const response = await fetch(
-                            "/api/admin/cancel",
-                            {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                              },
-                              body: JSON.stringify({
-                                id: booking.id,
-                                reason: reason.trim(),
-                              }),
-                            }
-                          );
-
-                          const data = await response.json();
-
-                          if (!response.ok) {
-                            throw new Error(
-                              data.error ||
-                                "ไม่สามารถยกเลิกการจองได้"
-                            );
-                          }
-
-                          if (data.emailSent === false) {
-alert(
-"ยกเลิกการจองเรียบร้อยแล้ว แต่ส่งอีเมลแจ้งลูกค้าไม่สำเร็จ\n" +
-"กรุณาตรวจสอบการส่งอีเมลภายหลัง"
-);
-} else {
-alert(
-"ยกเลิกการจองเรียบร้อยแล้ว\n" +
-"ส่งอีเมลแจ้งลูกค้าเรียบร้อยแล้ว"
-);
-}
-
-await loadBookings();
-
-                        } catch (error) {
-                          console.error(
-                            "CANCEL BOOKING ERROR =",
-                            error
-                          );
-
-                          alert(
-                            error instanceof Error
-                              ? `ยกเลิกการจองไม่สำเร็จ: ${error.message}`
-                              : "ไม่สามารถยกเลิกการจองได้ กรุณาลองใหม่อีกครั้ง"
-                          );
-                        }
-                      }}
-                      className="rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-700"
+                  {(booking.booking_status === "pending" ||
+                    booking.booking_status === "confirmed") && (
+                    <button
+                      type="button"
+                      onClick={() => cancelBooking(booking)}
+                      className="block rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-700"
                     >
                       ยกเลิกการจอง
                     </button>
-                  </div>
-                )}
+                  )}
 
-                {/* ป้ายแสดงสถานะ */}
-                <span
-                  className={
-                    booking.booking_status === "confirmed"
-                      ? "inline-block rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700"
+                  {booking.needs_payment_review && (
+                    <div className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">
+                      ⚠️ ต้องตรวจสอบยอดเก่า
+                    </div>
+                  )}
+
+                  <span
+                    className={
+                      booking.booking_status === "confirmed"
+                        ? "inline-block rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700"
+                        : booking.booking_status === "cancelled"
+                        ? "inline-block rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-700"
+                        : "inline-block rounded-full bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-700"
+                    }
+                  >
+                    {booking.booking_status === "pending"
+                      ? "รอตรวจสอบ"
+                      : booking.booking_status === "confirmed"
+                      ? "ยืนยันแล้ว"
                       : booking.booking_status === "cancelled"
-                      ? "inline-block rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-700"
-                      : "inline-block rounded-full bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-700"
-                  }
-                >
-                  {booking.booking_status === "pending"
-                    ? "รอตรวจสอบ"
-                    : booking.booking_status === "confirmed"
-                    ? "ยืนยันแล้ว"
-                    : booking.booking_status === "cancelled"
-                    ? "ยกเลิก"
-                    : booking.booking_status}
-                </span>
-              </td>
+                      ? "ยกเลิก"
+                      : booking.booking_status}
+                  </span>
 
-            </tr>
+                </td>
 
-          ))}
+              </tr>
 
-        </tbody>
+            ))}
 
-      </table>
+          </tbody>
+
+        </table>
+
+      </section>
 
     </div>
   );

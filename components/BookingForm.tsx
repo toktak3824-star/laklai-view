@@ -1,7 +1,6 @@
 "use client";
 
 import { calculatePrice } from "@/utils/calculatePrice";
-import { DINNER_MENU } from "@/data/dinnerMenu";
 import { useMemo, useState } from "react";
 import type { Room } from "@/types/room";
 import BookingPolicy from "@/components/BookingPolicy";
@@ -53,47 +52,6 @@ export default function BookingForm({ room }: Props) {
 
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
 
-  // =========================================
-  // อาหารเย็นสั่งล่วงหน้า
-  // เก็บเฉพาะ id + จำนวน แล้วคำนวณราคาจากเมนูกลาง
-  // =========================================
-  const [dinnerQuantities, setDinnerQuantities] = useState<Record<string, number>>({});
-
-  const dinnerItems = useMemo(
-    () =>
-      DINNER_MENU
-        .map((item) => ({
-          ...item,
-          quantity: Math.max(0, Math.floor(dinnerQuantities[item.id] ?? 0)),
-        }))
-        .filter((item) => item.quantity > 0),
-    [dinnerQuantities]
-  );
-
-  const dinnerTotal = useMemo(
-    () =>
-      dinnerItems.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      ),
-    [dinnerItems]
-  );
-
-  const setDinnerQuantity = (id: string, quantity: number) => {
-    const safeQuantity = Math.max(0, Math.min(20, Math.floor(quantity || 0)));
-
-    setDinnerQuantities((current) => {
-      const next = { ...current };
-
-      if (safeQuantity <= 0) {
-        delete next[id];
-      } else {
-        next[id] = safeQuantity;
-      }
-
-      return next;
-    });
-  };
 const [isSubmitting, setIsSubmitting] = useState(false);
 
 // =========================================
@@ -435,29 +393,6 @@ const balanceAmount = Math.max(0, totalPrice - depositAmount);
         return;
       }
 
-      // =========================================
-      // ตรวจสอบการสั่งอาหารเย็นล่วงหน้า
-      // ต้องสั่งอย่างน้อย 1 วันก่อนวันเช็คอิน
-      // =========================================
-      if (dinnerItems.length > 0) {
-        const tomorrow = new Date();
-        tomorrow.setHours(0, 0, 0, 0);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const minDinnerCheckIn = tomorrow
-          .toISOString()
-          .split("T")[0];
-
-        if (checkIn < minDinnerCheckIn) {
-          alert(
-            "อาหารเย็นต้องสั่งล่วงหน้าอย่างน้อย 1 วันก่อนวันเช็คอิน\n\n" +
-              "กรุณาเลือกวันเช็คอินที่ห่างจากวันนี้อย่างน้อย 1 วัน " +
-              "หรือยกเลิกรายการอาหารเย็น"
-          );
-          setIsSubmitting(false);
-          return;
-        }
-      }
 // =========================================
 // ตรวจสอบกิจกรรมวิถีบ้านป่า
 // =========================================
@@ -803,13 +738,9 @@ if (natureExperienceSelected) {
   slip_url: "",
   booking_code: bookingCode,
 
-  dinner_items: dinnerItems.map((item) => ({
-    id: item.id,
-    name: item.name,
-    price: item.price,
-    quantity: item.quantity,
-  })),
-  dinner_total: dinnerTotal,
+  // อาหารเย็นจะเลือกในหน้าชำระเงิน โดยใช้ Booking Code เดิม
+  dinner_items: [],
+  dinner_total: 0,
 }),
 });
 
@@ -828,70 +759,9 @@ const booking = result.booking;
         booking
       );
 
-      // =========================================
-      // 6. ส่ง Email
-      // =========================================
-
-      const customerEmail =
-        email.trim();
-
-      const emailResponse =
-        await fetch(
-          "/api/send-email",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              email: customerEmail,
-              guestName,
-              roomName:
-                room.title,
-              checkIn,
-              checkOut,
-              totalPrice: Number(booking.total_price ?? totalPrice),
-              bookingCode,
-              adults,
-              childAges,
-              natureExperienceSelected,
-
-natureExperienceDate:
-  natureExperienceSelected
-    ? natureExperienceDate
-    : null,
-
-natureExperienceParticipants:
-  natureExperienceSelected
-    ? natureExperienceParticipants
-    : 0,
-
-natureExperienceTotal:
-  natureExperienceSelected
-    ? natureExperienceTotal
-    : 0,
-
-              dinnerItems,
-              dinnerTotal,
-            }),
-          }
-        );
-
-      const emailResult =
-        await emailResponse.json();
-
-      console.log(
-        "EMAIL RESPONSE =",
-        emailResult
-      );
-
-      if (!emailResponse.ok) {
-        console.error(
-          "EMAIL ERROR =",
-          emailResult
-        );
-      }
+      // ยังไม่ส่งอีเมลยืนยันในขั้นตอนนี้
+      // ลูกค้าต้องชำระเงินและแนบสลิปก่อน
+      // แอดมินตรวจสอบและยืนยันแล้วจึงส่งอีเมลยืนยัน
 
       // =========================================
       // 7. ไปหน้าชำระเงิน
@@ -1287,7 +1157,7 @@ natureExperienceTotal:
                   💰 สรุปราคาที่พักเบื้องต้น
                 </h3>
                 <p className="mt-1 text-sm text-green-800">
-                  ตรวจสอบราคาได้ก่อนเลือกสั่งอาหารล่วงหน้า
+                  ตรวจสอบราคาที่พักและกิจกรรมก่อนดำเนินการต่อ
                 </p>
               </div>
               <div className="space-y-3 px-5 py-5">
@@ -1314,125 +1184,30 @@ natureExperienceTotal:
                   <span className="text-2xl font-bold text-green-700">฿{roomTotal.toLocaleString("th-TH")}</span>
                 </div>
                 <p className="text-xs leading-5 text-stone-600">
-                  ราคานี้เป็นค่าที่พักตามวันและจำนวนผู้เข้าพักที่เลือก ยังไม่รวมกิจกรรมวิถีบ้านป่าหรืออาหารที่อาจเลือกเพิ่มเติม
+                  ราคานี้เป็นค่าที่พักตามวันและจำนวนผู้เข้าพักที่เลือก ยังไม่รวมกิจกรรมวิถีบ้านป่าที่เลือกเพิ่มเติม ส่วนอาหารเย็นสามารถเลือกได้ในหน้าชำระเงินและชำระแยกในวันเช็กอิน
                 </p>
               </div>
             </div>
           )}
 
-          {/* =========================================
-    DINNER PRE-ORDER
-========================================= */}
-<div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50">
-  <div className="bg-amber-900 px-5 py-4 text-white">
-    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200">
-      LAKLAI VIEW DINNER
-    </p>
-    <h3 className="mt-1 text-xl font-bold">
-      🍽️ สั่งอาหารเย็นล่วงหน้า
-    </h3>
-    <p className="mt-1 text-sm leading-6 text-amber-100">
-      สำหรับผู้เข้าพักที่จองบ้านพักเท่านั้น
-      และต้องสั่งอาหารเย็นไว้ล่วงหน้า
-    </p>
-  </div>
-
-  <div className="space-y-4 px-5 py-5">
-    <div className="rounded-xl border border-amber-200 bg-white p-4 text-sm leading-6 text-stone-700">
-      <p>🍽️ <b>จัดส่งอาหารเย็น ที่บ้านพัก หรือต้องการทานที่ร้านกาแฟ:</b> 17:30–18:45 น.</p>
-      <p>💰 <b>การชำระเงิน (หากจอง &quot;วิถีบ้านป่า&quot; ไม่ต้องสั่งอาหารเย็น):</b> ชำระค่าอาหารในวันเช็คอิน</p>
-      <p>📝 หากต้องการเปลี่ยนแปลงรายการ กรุณาติดต่อหลักลาย View โดยตรง</p>
-    </div>
-
-    <div className="space-y-3">
-      {DINNER_MENU.map((item) => {
-        const quantity = dinnerQuantities[item.id] ?? 0;
-
-        return (
-          <div
-            key={item.id}
-            className="rounded-xl border border-stone-200 bg-white p-4"
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="font-semibold text-stone-800">
-                  {item.name}
-                </p>
-                <p className="mt-1 text-sm text-amber-700">
-                  ฿{item.price.toLocaleString("th-TH")} / รายการ
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDinnerQuantity(item.id, quantity - 1)
-                  }
-                  disabled={quantity <= 0}
-                  className="h-10 w-10 rounded-lg border border-stone-300 bg-white text-lg font-bold text-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label={`ลดจำนวน ${item.name}`}
-                >
-                  −
-                </button>
-
-                <span className="flex h-10 min-w-10 items-center justify-center rounded-lg bg-amber-50 px-3 font-bold text-stone-800">
-                  {quantity}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDinnerQuantity(item.id, quantity + 1)
-                  }
-                  disabled={quantity >= 20}
-                  className="h-10 w-10 rounded-lg bg-amber-700 text-lg font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label={`เพิ่มจำนวน ${item.name}`}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {quantity > 0 && (
-              <p className="mt-2 text-right text-sm font-semibold text-amber-800">
-                ฿{(item.price * quantity).toLocaleString("th-TH")}
-              </p>
-            )}
-          </div>
-        );
-      })}
-    </div>
-
-    {dinnerItems.length > 0 && (
-      <div className="rounded-xl border-2 border-amber-300 bg-white p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="font-bold text-amber-900">
-              🍽️ รวมค่าอาหารเย็น
+          {/* Dinner ordering is moved to the payment page */}
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
+              LAKLAI VIEW DINNER
             </p>
-            <p className="mt-1 text-xs text-stone-500">
-              ยังไม่รวมในยอดที่ต้องโอนตอนจอง
+            <h3 className="mt-1 text-xl font-bold text-amber-950">
+              🍽️ สั่งอาหารเย็นล่วงหน้า
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-stone-700">
+              ท่านสามารถเลือกเมนูอาหารเย็นได้ในขั้นตอนถัดไป หลังจากกดยืนยันการจองและเข้าสู่หน้าชำระเงิน
+            </p>
+            <p className="mt-2 text-sm leading-6 text-amber-800">
+              กรุณาสั่งอาหารล่วงหน้าอย่างน้อย 1 วันก่อนวันเข้าพัก ค่าอาหารคิดแยกจากค่าที่พักและกิจกรรม และชำระในวันเช็กอิน
+            </p>
+            <p className="mt-2 text-sm leading-6 text-green-800">
+              หากเลือกกิจกรรมวิถีบ้านป่า ซึ่งรวมอาหาร 3 มื้อแล้ว ไม่จำเป็นต้องสั่งอาหารเย็นเพิ่มเติม
             </p>
           </div>
-          <p className="text-2xl font-bold text-amber-700">
-            ฿{dinnerTotal.toLocaleString("th-TH")}
-          </p>
-        </div>
-        <p className="mt-3 text-xs leading-5 text-stone-500">
-          ชำระค่าอาหารกับที่พักในวันเช็คอิน
-        </p>
-      </div>
-    )}
-
-    <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-xs leading-6 text-stone-600">
-      <p>🍳 อาหารเช้าให้บริการเวลา 07:30–09:45 น. ที่ร้านกาแฟ Laklai View</p>
-      <p>🚫 ไม่อนุญาตให้นำเตาปิ้งย่างหรือหม้อไฟฟ้าเข้ามาประกอบอาหาร</p>
-      <p>🚫 ไม่อนุญาตให้รับประทานอาหารภายในห้องพัก กรุณารับประทานด้านนอก</p>
-      <p>🍺 หากนำเครื่องดื่มแอลกอฮอล์มาเอง กรุณานำขวดแก้วกลับไปด้วย เนื่องจากพื้นที่ไม่มีจุดทิ้งขวดแก้ว</p>
-    </div>
-  </div>
-</div>
 
 
 <div>
@@ -1454,76 +1229,86 @@ natureExperienceTotal:
 
     <div className="space-y-4 px-5 py-5">
 
-      {/* รูปกิจกรรมวิถีบ้านป่า 6 รูป */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {/* กิจกรรม 4 ขั้นตอน — แสดงภาพเต็ม ไม่ตัดส่วนใดของภาพ */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {[
-          "/images/nature-experience/nature1.jpg",
-          "/images/nature-experience/nature2.jpg",
-          "/images/nature-experience/nature3.jpg",
-          "/images/nature-experience/nature4.jpg",
-          "/images/nature-experience/nature5.mp4",
-          "/images/nature-experience/nature6.jpg",
-        ].map((image, index) => (
-          <div
-            key={image}
-            className="overflow-hidden rounded-xl bg-stone-100"
-          >
-            {image.endsWith(".mp4") ? (
-  <video
-    src={image}
-    className="h-32 w-full object-cover sm:h-40"
-    muted
-    loop
-    autoPlay
-    playsInline
-  />
-) : (
-  <img
-    src={image}
-    alt={`กิจกรรมวิถีบ้านป่า ${index + 1}`}
-    className="h-32 w-full object-cover transition-transform duration-300 hover:scale-105 sm:h-40"
-    loading={index < 2 ? "eager" : "lazy"}
-  />
-)}
-          </div>
+          {
+            step: "01",
+            title: "เดินชมเส้นทางธรรมชาติ",
+            description: "เดินระยะสั้นประมาณ 700–800 เมตร ชมป่าและลำธารไปกับเจ้าของที่พักและคนท้องถิ่น",
+            image: "/images/nature-experience/activity-walk.jpg",
+          },
+          {
+            step: "02",
+            title: "ล่องห่วงยางตามลำน้ำ",
+            description: "ล่องไปตามลำธารระยะทางประมาณ 1 กิโลเมตร สนุกกับธรรมชาติ ไม่ต้องเดินย้อนกลับ",
+            image: "/images/nature-experience/activity-tubing.jpg",
+          },
+          {
+            step: "03",
+            title: "หาวัตถุดิบพื้นบ้าน",
+            description: "ใช้เวลาประมาณ 30–40 นาที เรียนรู้การหาปลา กุ้ง หอย ปู และเก็บผักกูดตามธรรมชาติ",
+            image: "/images/nature-experience/activity-foraging.jpg",
+          },
+          {
+            step: "04",
+            title: "ปรุงอาหารและกินร่วมกัน",
+            description: "นำวัตถุดิบที่หาได้มาปรุงเป็นอาหารพื้นบ้าน รับประทานร่วมกับเจ้าของที่พักและคนท้องถิ่น",
+            image: "/images/nature-experience/activity-cooking.jpg",
+          },
+        ].map((item) => (
+          <article key={item.step} className="overflow-hidden rounded-2xl border border-green-100 bg-white">
+            <div className="flex min-h-52 items-center justify-center bg-stone-100 p-2 sm:min-h-60">
+              <img
+                src={item.image}
+                alt={item.title}
+                className="max-h-80 w-full object-contain"
+                loading="lazy"
+              />
+            </div>
+            <div className="p-4">
+              <p className="text-xs font-bold tracking-widest text-green-700">STEP {item.step}</p>
+              <h4 className="mt-1 font-bold text-green-950">{item.title}</h4>
+              <p className="mt-1 text-sm leading-6 text-stone-600">{item.description}</p>
+            </div>
+          </article>
         ))}
       </div>
 
+      {/* วิดีโอกิจกรรมจริง — แตะเพื่อเล่น และไม่ตัดภาพ */}
+      <div>
+        <h4 className="mb-3 font-bold text-green-950">🎥 บรรยากาศกิจกรรมจริง</h4>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {["nature5.mp4", "nature6.mp4", "nature7.mp4", "nature8.mp4", "nature9.mp4", "nature10.mp4"].map((video) => (
+            <video
+              key={video}
+              src={`/images/nature-experience/${video}`}
+              controls
+              playsInline
+              preload="metadata"
+              className="max-h-72 w-full rounded-xl bg-stone-950 object-contain"
+            />
+          ))}
+        </div>
+      </div>
+
       <p className="text-sm leading-7 text-stone-700">
-        เดินเส้นทางธรรมชาติ ลัดเลาะตามป่าเขาและเนินธรรมชาติ
-        โดยเจ้าของที่พักและมัคคุเทศก์ท้องถิ่นพาเดิน
-        สัมผัสน้ำตกและธรรมชาติ พร้อมเก็บผักพื้นบ้าน
-        ตามฤดูกาล เพื่อนำกลับมาประกอบเป็นอาหารเย็น
-        แบบเรียบง่าย
+        ใช้เวลาประมาณ 4 ชั่วโมง สัมผัสธรรมชาติแบบไม่เร่งรีบ
+        ตั้งแต่เดินชมป่า ล่องห่วงยางไปตามลำธาร หาวัตถุดิบพื้นบ้าน
+        ไปจนถึงช่วยกันปรุงอาหารและรับประทานร่วมกัน
+        โดยมีเจ้าของที่พักและคนท้องถิ่นดูแลตลอดกิจกรรม
       </p>
 
       <div className="rounded-xl border border-green-200 bg-white p-4 text-sm leading-7 text-stone-700">
-
-        <p>
-          🌳 <b>ช่วงกิจกรรม</b> เดินเส้นทางธรรมชาติ
+        <p>🕥 <b>เวลาเริ่มกิจกรรม:</b> 10:30–11:00 น.</p>
+        <p>⏱️ <b>ระยะเวลา:</b> ประมาณ 4 ชั่วโมง เสร็จประมาณ 14:30–15:00 น.</p>
+        <p>🥾 <b>เดินชมธรรมชาติ:</b> เส้นทางระยะสั้นประมาณ 700–800 เมตร</p>
+        <p>🛟 <b>ล่องห่วงยาง:</b> ตามลำน้ำประมาณ 1 กิโลเมตร มีรถรับกลับ ไม่ต้องเดินย้อนทาง</p>
+        <p>🦐 <b>หาวัตถุดิบ:</b> ประมาณ 30–40 นาที เรียนรู้การหาปลา กุ้ง หอย ปู และเก็บผักพื้นบ้านตามฤดูกาล</p>
+        <p>🍲 <b>อาหาร 3 มื้อสำหรับผู้เข้าร่วม:</b> มื้อกลางวันระหว่างกิจกรรม มื้อเย็น และมื้อเช้า</p>
+        <p className="mt-2 rounded-lg bg-green-50 p-3 text-sm font-semibold text-green-900">
+          กิจกรรมเป็นประสบการณ์กลุ่ม แนะนำให้ผู้เข้าพักร่วมกิจกรรมไปด้วยกัน เพื่อให้ทุกคนได้ใช้เวลาร่วมกัน
         </p>
-
-        <p>
-          🌿 <b>สิ่งที่ได้สัมผัส</b> ธรรมชาติ น้ำตก
-          ลำธาร ประสบการณ์ใหม่ วิถีชีวิตคนพื้นเมืองน่าน และวัตถุดิบพื้นบ้านตามฤดูกาล
-        </p>
-
-         <p>
-          🥾 <b>ออกเดินทาง</b> {NATURE_EXPERIENCE.departureTime}
-          ศึกษาธรรมชาติ เดินป่า และเก็บผักพื้นบ้านตามฤดูกาล
-        </p>  
-        
-        <p>
-        
-          🏡 <b>กลับถึงที่พัก</b> {NATURE_EXPERIENCE.returnTime}
-          เพื่อพักผ่อนตามอัธยาศัย
-        </p>
-
-        <p>
-          🍚 <b>อาหารเย็น</b> {NATURE_EXPERIENCE.dinnerTime}
-          ที่{NATURE_EXPERIENCE.dinnerLocation}
-        </p>
-
       </div>
 {natureExperienceSelected && (
   <div className="rounded-xl border border-green-200 bg-white p-4">
@@ -1616,7 +1401,7 @@ natureExperienceTotal:
 
     <div className="mt-2 space-y-1">
   <p className="text-xs leading-5 text-stone-500">
-    จำนวนผู้เข้าร่วมกิจกรรมสามารถเลือกแยกจากจำนวนผู้เข้าพักได้
+    กิจกรรมเป็นประสบการณ์กลุ่ม แนะนำให้ผู้เข้าพักร่วมกิจกรรมพร้อมกัน
   </p>
 
   <p className="text-xs font-semibold leading-5 text-red-600">
@@ -1632,11 +1417,10 @@ natureExperienceTotal:
   type="checkbox"
   checked={natureExperienceSelected}
   onChange={(e) => {
-    setNatureExperienceSelected(
-      e.target.checked
-    );
+    const selected = e.target.checked;
+    setNatureExperienceSelected(selected);
 
-    if (!e.target.checked) {
+    if (!selected) {
       setNatureExperienceDate("");
       setNatureExperienceParticipants(0);
     }
@@ -1653,7 +1437,7 @@ natureExperienceTotal:
   </span>
 
   <span className="text-lg font-bold text-green-700">
-    ฿899 / คน พร้อมอาหารระหว่างกิจกรรม-เย็น
+    ฿899 / คน รวมอาหาร 3 มื้อ
   </span>
 
 </div>
@@ -1757,13 +1541,12 @@ natureExperienceTotal:
   ฿899 × {natureExperienceParticipants} คน
 </p>
 
-<p className="mt-2 text-xs leading-5 text-stone-500">
-  🥾 ออกเดินทางประมาณ 14:00–14:30 น.
+<p className="mt-2 text-xs leading-5 text-stone-600">
+  🕥 เริ่มกิจกรรม 10:30–11:00 น. ใช้เวลาประมาณ 4 ชั่วโมง
   <br />
-  🏡 กลับถึงที่พักประมาณ 16:00 น.
+  🏡 เสร็จกิจกรรมประมาณ 14:30–15:00 น.
   <br />
-  🍚 อาหารเย็นประมาณ 18:00 น.
-  ที่ร้านกาแฟ Laklai View
+  🍲 รวมอาหาร 3 มื้อ: กลางวันระหว่างกิจกรรม มื้อเย็น และมื้อเช้า
 </p>
         </div>
 
@@ -1776,43 +1559,11 @@ natureExperienceTotal:
     </div>
   )}
 
-    {dinnerItems.length > 0 && (
-      <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-amber-900">
-              🍽️ รายการอาหารเย็นที่สั่งล่วงหน้า
-            </p>
-            <p className="mt-1 text-xs text-stone-600">
-              ค่าอาหารชำระแยกต่างหาก ณ วันเช็กอิน
-            </p>
-          </div>
-          <span className="shrink-0 text-xl font-bold text-amber-700">
-            ฿{dinnerTotal.toLocaleString("th-TH")}
-          </span>
-        </div>
-        <div className="space-y-2 border-t border-amber-200 pt-3">
-          {dinnerItems.map((item) => (
-            <div key={item.id} className="flex items-start justify-between gap-3 text-sm">
-              <span className="text-stone-700">{item.name} × {item.quantity}</span>
-              <span className="shrink-0 font-semibold text-stone-800">
-                ฿{(item.price * item.quantity).toLocaleString("th-TH")}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="mt-3 rounded-lg bg-white p-3 text-sm leading-6 text-amber-950">
-          <p className="font-bold">โปรดทราบ: ค่าอาหารไม่รวมในยอดชำระค่าจอง</p>
-          <p>ท่านชำระค่าอาหารตามยอดข้างต้นกับที่พักในวันเช็กอิน ไม่ต้องโอนค่าอาหารพร้อมเงินมัดจำหรือค่าจองห้องพัก</p>
-        </div>
-      </div>
-    )}
-
     <div className="space-y-3 border-t border-green-200 pt-4">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-stone-600">ยอดรวมค่าที่พักและกิจกรรม</p>
-          <p className="text-xs text-stone-500">ไม่รวมค่าอาหาร โดยค่าอาหารชำระแยกในวันเช็กอิน</p>
+          <p className="text-xs text-stone-500">ยอดนี้รวมค่าที่พักและกิจกรรม (ถ้าเลือก) ไม่รวมค่าอาหารเย็น ซึ่งเลือกได้ในหน้าชำระเงินและชำระแยกในวันเช็กอิน</p>
         </div>
         <p className="text-xl font-bold text-stone-800">฿{totalPrice.toLocaleString("th-TH")}</p>
       </div>

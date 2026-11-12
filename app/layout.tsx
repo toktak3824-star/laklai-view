@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
-import "./globals.css";
+
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,12 +21,12 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://laklaiview.com"),
 
   title: {
-    default: "หลักลาย View | ที่พักปัว น่าน วิวภูเขา ท่ามกลางธรรมชาติ",
-    template: "%s | หลักลาย View",
+    default: "หลักลาย view วิถีบ้านป่า | ที่พักท่ามกลางธรรมชาติ จังหวัดน่าน",
+    template: "%s | หลักลาย view วิถีบ้านป่า",
   },
 
   description:
-    "หลักลาย View ที่พักปัว น่าน ท่ามกลางธรรมชาติและวิวภูเขา ใกล้ถนนเลข 3 เพียง 4.5 กม. บ้านพักส่วนตัว เงียบสงบ พร้อมอ่างแช่น้ำแร่จากธรรมชาติ และ Coffee Shop",
+    "หลักลาย view วิถีบ้านป่า บ้านพักส่วนตัวท่ามกลางธรรมชาติและวิวภูเขา จังหวัดน่าน บนเส้นทางปัว-บ่อเกลือ พร้อมอ่างแช่น้ำแร่จากธรรมชาติ กิจกรรมวิถีบ้านป่า และอาหารพื้นถิ่น",
 
   keywords: [
     "ที่พักปัว",
@@ -38,7 +40,10 @@ export const metadata: Metadata = {
     "บ้านพักวิวภูเขา",
     "ที่พักสำหรับคู่รัก น่าน",
     "ที่พักส่วนตัว น่าน",
-    "หลักลาย View",
+    "กิจกรรมวิถีบ้านป่า",
+    "เที่ยวธรรมชาติ น่าน",
+    "อาหารพื้นถิ่นน่าน",
+    "หลักลาย view วิถีบ้านป่า",
     "Laklai View",
   ],
 
@@ -47,20 +52,20 @@ export const metadata: Metadata = {
   },
 
   openGraph: {
-    title: "หลักลาย View | ที่พักปัว น่าน วิวภูเขา ท่ามกลางธรรมชาติ",
+    title: "หลักลาย view วิถีบ้านป่า",
     description:
-      "พักผ่อนท่ามกลางขุนเขาและธรรมชาติที่ปัว น่าน บ้านพักส่วนตัว เงียบสงบ ใกล้ถนนเลข 3 เพียง 4.5 กม. พร้อมอ่างแช่น้ำแร่จากธรรมชาติ",
+      "พักผ่อนท่ามกลางขุนเขาและธรรมชาติ สัมผัสวิถีบ้านป่า บ้านพักส่วนตัว กิจกรรมธรรมชาติ และอาหารพื้นถิ่น จังหวัดน่าน",
     url: "https://laklaiview.com",
-    siteName: "หลักลาย View",
+    siteName: "หลักลาย view วิถีบ้านป่า",
     locale: "th_TH",
     type: "website",
   },
 
   twitter: {
     card: "summary_large_image",
-    title: "หลักลาย View | ที่พักปัว น่าน",
+    title: "หลักลาย view วิถีบ้านป่า",
     description:
-      "บ้านพักท่ามกลางธรรมชาติและวิวภูเขาในปัว น่าน",
+      "บ้านพักส่วนตัว กิจกรรมวิถีบ้านป่า และอาหารพื้นถิ่น ท่ามกลางธรรมชาติและวิวภูเขา จังหวัดน่าน",
   },
 
   robots: {
@@ -72,7 +77,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html
@@ -81,9 +86,7 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-stone-950 text-white">
         <Navbar />
-
         {children}
-
         <Footer />
 
         {/* Google Ads / Google Tag */}
@@ -95,7 +98,7 @@ export default function RootLayout({
         <Script id="google-ads-tag" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
+            function gtag(){window.dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', 'AW-18457702129');
           `}

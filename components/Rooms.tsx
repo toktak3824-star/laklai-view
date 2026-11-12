@@ -41,17 +41,33 @@ export default function Rooms() {
         ================================================== */}
         <div className="grid grid-cols-1 gap-7 sm:gap-8 md:grid-cols-2 lg:gap-10">
           {rooms.map((room) => (
-            <RoomCard
-              key={room.id}
-              id={room.id}
-              title={room.title}
-              subtitle={room.subtitle}
-              images={room.images}
-              description={room.description}
-              price={room.pricing.weekday}
-              originalPrice={room.pricing.originalWeekday}
-            />
-          ))}
+  <RoomCard
+    key={room.id}
+    id={room.id}
+    title={room.title}
+    subtitle={room.subtitle}
+    images={room.images}
+    description={room.description}
+
+    price={room.pricing.weekday}
+    originalPrice={
+      room.pricing.originalWeekday ?? room.pricing.weekday
+    }
+
+    holidayPrice={room.pricing.holiday}
+    originalHolidayPrice={
+      room.pricing.originalHoliday ?? room.pricing.holiday
+    }
+
+    defaultGuests={room.defaultGuests}
+    maxGuests={room.maxGuests}
+
+    extraAdultPrice={room.extraAdultPrice}
+    extraChildBedPrice={room.extraChildBedPrice}
+    extraBed={room.extraBed}
+    freeChildAge={room.freeChildAge}
+  />
+))}
         </div>
 
         {/* ==================================================

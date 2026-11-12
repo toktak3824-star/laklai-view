@@ -8,17 +8,15 @@ export default function Hero() {
       <div className="relative h-[72svh] min-h-[500px] w-full sm:h-[75vh] sm:min-h-[560px]">
         <Image
           src="/images/hero/hero.jpg"
-          alt="หลักลาย View ที่พักสุดเขตปัว จังหวัดน่าน วิวภูเขาท่ามกลางธรรมชาติ"
+          alt="หลักลาย View ที่พักท่ามกลางธรรมชาติ จังหวัดน่าน"
           fill
           priority
           sizes="100vw"
           className="object-cover object-[center_48%] sm:object-center"
         />
 
-        {/* Dark overlay */}
         <div className="absolute inset-0 bg-black/35" />
 
-        {/* Soft bottom gradient */}
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
 
         {/* Hero Content */}
@@ -37,7 +35,7 @@ export default function Hero() {
             </p>
 
             <p className="mx-auto mt-2 max-w-md text-sm leading-7 text-white/90 sm:text-lg">
-              กลับมาใช้เวลาช้าๆ ในท่ามกลางธรรมชาติอีกครั้ง
+              กลับมาใช้เวลาช้า ๆ ท่ามกลางธรรมชาติอีกครั้ง
             </p>
           </div>
         </div>
@@ -51,21 +49,31 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Main CTA */}
+      {/* Main Navigation */}
       <div className="bg-[#1f4d38] px-5 py-5 sm:px-6 sm:py-7">
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-3 sm:flex-row sm:justify-center sm:gap-4">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 sm:flex-row sm:justify-center sm:gap-4">
+          {/* Booking */}
           <Link
-            href="#rooms"
-            className="flex min-h-14 w-full items-center justify-center rounded-full bg-green-600 px-7 py-4 text-base font-bold text-white shadow-lg shadow-black/20 transition active:scale-[0.98] hover:bg-green-500 sm:w-auto sm:min-w-[210px] sm:text-lg"
+            href="/#rooms"
+            className="flex min-h-14 w-full items-center justify-center rounded-full bg-green-600 px-5 py-4 text-base font-bold text-white shadow-lg shadow-black/20 transition hover:bg-green-500 active:scale-[0.98] sm:w-auto sm:min-w-[210px] sm:text-lg"
           >
-            จองที่พัก
+            🏡 จองบ้านพัก
           </Link>
 
+          {/* Nature Experience */}
           <Link
-            href="/coffee"
-            className="flex min-h-14 w-full items-center justify-center rounded-full border border-white/30 bg-white/10 px-7 py-4 text-base font-semibold text-white backdrop-blur-md transition active:scale-[0.98] hover:bg-white/20 sm:w-auto sm:min-w-[210px] sm:text-lg"
+            href="/nature-experience"
+            className="flex min-h-14 w-full items-center justify-center rounded-full border border-white/30 bg-white/10 px-5 py-4 text-base font-semibold text-white backdrop-blur-md transition hover:bg-white/20 active:scale-[0.98] sm:w-auto sm:min-w-[210px] sm:text-lg"
           >
-            ☕ Coffee Shop
+            🌿 กิจกรรมวิถีบ้านป่า
+          </Link>
+
+          {/* Dinner Menu */}
+          <Link
+            href="/dinner-menu"
+            className="flex min-h-14 w-full items-center justify-center rounded-full border border-white/30 bg-white/10 px-5 py-4 text-base font-semibold text-white backdrop-blur-md transition hover:bg-white/20 active:scale-[0.98] sm:w-auto sm:min-w-[210px] sm:text-lg"
+          >
+            🍲 เมนูอาหาร
           </Link>
         </div>
       </div>

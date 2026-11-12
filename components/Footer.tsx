@@ -4,9 +4,7 @@ export default function Footer() {
   return (
     <footer className="bg-[#101914] text-stone-200">
       <div className="mx-auto max-w-7xl px-6 py-14 sm:px-8">
-
         <div className="grid gap-10 md:grid-cols-3">
-
           {/* Brand */}
           <div>
             <p className="text-xs tracking-[0.35em] text-green-400">
@@ -21,18 +19,17 @@ export default function Footer() {
               บ้านพักท่ามกลางธรรมชาติและวิวภูเขา
               สุดเขตอำเภอปัว ใกล้ถนนเลข 3 จังหวัดน่าน
               สำหรับคนที่อยากหยุดพักจากความวุ่นวาย
-              และกลับมาใช้เวลาช้าๆ ในธรรมชาติอีกครั้ง
+              และกลับมาใช้เวลาช้า ๆ ในธรรมชาติอีกครั้ง
             </p>
           </div>
 
           {/* Menu */}
           <div>
             <h3 className="text-lg font-semibold text-white">
-              เมนู
+              บริการของเรา
             </h3>
 
             <div className="mt-4 flex flex-col gap-3 text-sm">
-
               <Link
                 href="/"
                 className="transition hover:text-green-400"
@@ -44,14 +41,21 @@ export default function Footer() {
                 href="/#rooms"
                 className="transition hover:text-green-400"
               >
-                บ้านพัก
+                🏡 จองบ้านพัก
               </Link>
 
               <Link
-                href="/coffee"
+                href="/nature-experience"
                 className="transition hover:text-green-400"
               >
-                ☕ Coffee Shop
+                🌿 กิจกรรมวิถีบ้านป่า
+              </Link>
+
+              <Link
+                href="/dinner-menu"
+                className="transition hover:text-green-400"
+              >
+                🍲 สั่งอาหารล่วงหน้า
               </Link>
 
               <Link
@@ -60,7 +64,6 @@ export default function Footer() {
               >
                 ติดต่อเรา
               </Link>
-
             </div>
           </div>
 
@@ -71,19 +74,9 @@ export default function Footer() {
             </h3>
 
             <div className="mt-4 space-y-3 text-sm text-stone-400">
-
-              <p>
-                📍 สุดเขตอำเภอปัว จังหวัดน่าน
-              </p>
-
-              <p>
-                🛣️ ใกล้ถนนเลข 3 ประมาณ 4.5 กม.
-              </p>
-
-              <p>
-                🏔️ เส้นทางมุ่งหน้าสู่บ่อเกลือ และสะปัน
-              </p>
-
+              <p>📍 สุดเขตอำเภอปัว จังหวัดน่าน</p>
+              <p>🛣️ ใกล้ถนนเลข 3 ประมาณ 4.5 กม.</p>
+              <p>🏔️ เส้นทางมุ่งหน้าสู่บ่อเกลือ และสะปัน</p>
             </div>
 
             <Link
@@ -93,12 +86,10 @@ export default function Footer() {
               ช่องทางการติดต่อ
             </Link>
           </div>
-
         </div>
 
         {/* Bottom */}
         <div className="mt-12 border-t border-white/10 pt-6 text-center">
-
           <p className="text-sm text-stone-500">
             © {new Date().getFullYear()} Laklai View. All rights reserved.
           </p>
@@ -106,9 +97,7 @@ export default function Footer() {
           <p className="mt-2 text-xs tracking-[0.2em] text-green-500">
             หลักลายวิว LAKLAI VIEW
           </p>
-
         </div>
-
       </div>
     </footer>
   );
