@@ -509,18 +509,18 @@ export async function POST(req: Request) {
         error: paymentLookupError,
       } = await supabaseAdmin
         .from("payments")
-.select(
-  "id, amount, slip_url, verified_at, verified, created_at"
-)
-.eq("booking_id", booking.id)
-.eq("amount", amount)
-.eq("verified", true)
-.eq("slip_url", booking.slip_url)
-.order("created_at", {
-  ascending: false,
-})
-.limit(1)
-.maybeSingle();
+        .select(
+          "id, amount, slip_url, verified_at, verified, created_at"
+        )
+        .eq("booking_id", booking.id)
+        .eq("amount", amount)
+        .eq("verified", true)
+        .eq("slip_url", booking.slip_url)
+        .order("created_at", {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle();
 
       if (paymentLookupError) {
         throw paymentLookupError;
@@ -836,25 +836,41 @@ if (!emailSent) {
         }
       }
 
-      // =======================================
-      // 10. สร้างลิงก์ดาวน์โหลดใบเสร็จ
-      // =======================================
+// =======================================
+// 10. สร้างลิงก์ดาวน์โหลดใบเสร็จ
+// =======================================
 
-      const {
-        data: signed,
-        error: signedError,
-      } = await supabaseAdmin.storage
-        .from(RECEIPT_BUCKET)
-        .createSignedUrl(
-          receiptRecord.pdf_path,
-          60 * 60 * 24 * 7
-        );
+const {
+  data: signed,
+  error: signedError,
+} = await supabaseAdmin.storage
+  .from(RECEIPT_BUCKET)
+  .createSignedUrl(
+    receiptRecord.pdf_path,
+    60 * 60 * 24 * 7
+  );
 
-      if (signedError) {
-        console.error("RECEIPT SIGNED URL ERROR =", signedError);
-      }
+if (signedError) {
+  console.error("RECEIPT SIGNED URL ERROR =", signedError);
 
-      receiptUrl = signed?.signedUrl ?? null;
+  receiptError =
+    receiptError ??
+    `ไม่สามารถสร้างลิงก์ดาวน์โหลดใบเสร็จได้: ${signedError.message}`;
+
+  receiptUrl = null;
+} else {
+  receiptUrl = signed?.signedUrl ?? null;
+
+  if (!receiptUrl) {
+    receiptError =
+      receiptError ??
+      "ไม่พบลิงก์ดาวน์โหลดใบเสร็จ";
+  }
+}
+
+          // =========================================
+      // 11. จัดการข้อผิดพลาดของใบเสร็จและอีเมล
+      // =========================================
 
     } catch (error) {
       console.error(
@@ -869,13 +885,12 @@ if (!emailSent) {
     }
 
     // =========================================
-    // 11. ยืนยันสำเร็จ
+    // 12. ส่งผลการยืนยันการชำระเงิน
     // =========================================
 
     return NextResponse.json({
       success: true,
-      message:
-        "บันทึกยอดรับเงินจริงและยืนยันการจองเรียบร้อยแล้ว",
+      message: "บันทึกยอดรับเงินจริงและยืนยันการจองเรียบร้อยแล้ว",
 
       emailSent,
 
