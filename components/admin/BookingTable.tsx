@@ -340,7 +340,7 @@ export default function BookingTable() {
     }
 
     try {
-      const response = await fetch("/api/admin/confirm", {
+      const response = await fetch("/api/admin/bookings/confirm", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
