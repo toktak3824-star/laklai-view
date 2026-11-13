@@ -51,6 +51,13 @@ export default function BookingTable() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  
+  const [receiptResult, setReceiptResult] = useState<{
+    receiptNo: string;
+    receiptUrl: string | null;
+    emailSent: boolean;
+    receiptError: string | null;
+  } | null>(null);
 
   useEffect(() => {
     loadBookings();
@@ -354,11 +361,19 @@ export default function BookingTable() {
       throw new Error(data.error || "ไม่สามารถบันทึกการรับเงินได้");
     }
 
+        setReceiptResult({
+      receiptNo: data.receiptNo ?? "",
+      receiptUrl: data.receiptUrl ?? null,
+      emailSent: data.emailSent === true,
+      receiptError: data.receiptError ?? null,
+    });
+
     alert(
       `บันทึกการรับเงินสำเร็จ\n\n` +
       `ยอดรับสะสม: ${money(data.receivedAmount)}\n` +
-      `ยอดคงเหลือ: ${money(data.remainingAmount)}\n` +
-      `อีเมล: ${data.emailSent ? "ส่งแล้ว" : "ไม่ได้ส่ง"}`
+      `ยอดคงเหลือ: ${money(data.remainingAmount)}\n\n` +
+      `เลขที่ใบเสร็จ: ${data.receiptNo ?? "ยังไม่สร้าง"}\n` +
+      `สถานะอีเมล: ${data.emailSent ? "ส่งสำเร็จ" : "ยังไม่สำเร็จ"}`
     );
 
     await loadBookings();
@@ -574,6 +589,57 @@ export default function BookingTable() {
       {/* ===================================== */}
       {/* ตารางรายการจอง */}
       {/* ===================================== */}
+
+{receiptResult && (
+  <section className="rounded-2xl border border-green-200 bg-green-50 p-6 shadow">
+
+    <h2 className="text-xl font-bold text-green-800">
+      📄 ผลการออกใบเสร็จรับเงิน
+    </h2>
+
+    <div className="mt-4 space-y-3 text-sm text-stone-700">
+
+      <p>
+        เลขที่ใบเสร็จ:
+        <strong className="ml-2">
+          {receiptResult.receiptNo || "ยังไม่มีเลขที่ใบเสร็จ"}
+        </strong>
+      </p>
+
+      <p>
+        สถานะอีเมล:
+        {receiptResult.emailSent ? (
+          <span className="ml-2 font-bold text-green-700">
+            ✅ ส่งอีเมลให้ลูกค้าเรียบร้อยแล้ว
+          </span>
+        ) : (
+          <span className="ml-2 font-bold text-red-700">
+            ❌ ยังไม่สามารถส่งอีเมลได้
+          </span>
+        )}
+      </p>
+
+      {receiptResult.receiptUrl && (
+        <a
+          href={receiptResult.receiptUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block rounded-lg bg-green-700 px-5 py-3 font-semibold text-white hover:bg-green-800"
+        >
+          📥 เปิดใบเสร็จ PDF
+        </a>
+      )}
+
+      {receiptResult.receiptError && (
+        <div className="rounded-lg bg-red-100 p-3 text-red-700">
+          ข้อผิดพลาด: {receiptResult.receiptError}
+        </div>
+      )}
+
+    </div>
+
+  </section>
+)}
 
       <section className="overflow-x-auto rounded-2xl bg-stone-50 p-6 shadow">
 

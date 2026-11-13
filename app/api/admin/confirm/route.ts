@@ -509,17 +509,18 @@ export async function POST(req: Request) {
         error: paymentLookupError,
       } = await supabaseAdmin
         .from("payments")
-        .select(
-          "id, amount, verified_at, verified, created_at"
-        )
-        .eq("booking_id", booking.id)
-        .eq("amount", amount)
-        .eq("verified", true)
-        .order("created_at", {
-          ascending: false,
-        })
-        .limit(1)
-        .maybeSingle();
+.select(
+  "id, amount, slip_url, verified_at, verified, created_at"
+)
+.eq("booking_id", booking.id)
+.eq("amount", amount)
+.eq("verified", true)
+.eq("slip_url", booking.slip_url)
+.order("created_at", {
+  ascending: false,
+})
+.limit(1)
+.maybeSingle();
 
       if (paymentLookupError) {
         throw paymentLookupError;
@@ -675,32 +676,40 @@ export async function POST(req: Request) {
 
       emailSent = Boolean(receiptRecord.email_sent);
 
-      if (
-        !emailSent &&
-        customerEmail &&
-        resend &&
-        fromEmail
-      ) {
-        const {
-          data: claimed,
-          error: claimError,
-        } = await supabaseAdmin
-          .from("booking_receipts")
-          .update({
-            email_status: "sending",
-          })
-          .eq("id", receiptRecord.id)
-          .eq("email_sent", false)
-          .in("email_status", [
-            "pending",
-            "failed",
-          ])
-          .select("id")
-          .maybeSingle();
+if (!emailSent) {
 
-        if (claimError) throw claimError;
+  if (!customerEmail) {
+    throw new Error(
+      "ไม่พบอีเมลของลูกค้า"
+    );
+  }
 
-        if (claimed) {
+  if (!resend || !fromEmail) {
+    throw new Error(
+      "ยังไม่ได้ตั้งค่า Resend API หรืออีเมลผู้ส่ง"
+    );
+  }
+
+  const {
+    data: claimed,
+    error: claimError,
+  } = await supabaseAdmin
+    .from("booking_receipts")
+    .update({
+      email_status: "sending",
+    })
+    .eq("id", receiptRecord.id)
+    .eq("email_sent", false)
+    .in("email_status", [
+      "pending",
+      "failed",
+    ])
+    .select("id")
+    .maybeSingle();
+
+  if (claimError) throw claimError;
+
+  if (claimed) {
           const {
             data: file,
             error: downloadError,

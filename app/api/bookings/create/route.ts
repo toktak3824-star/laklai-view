@@ -570,7 +570,7 @@ export async function POST(req: Request) {
     // 14. ส่งผลกลับไป BookingForm
     // =========================================
 
-    return NextResponse.json({
+        return NextResponse.json({
       success: true,
       booking,
     });
