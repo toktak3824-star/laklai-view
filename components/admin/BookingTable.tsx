@@ -293,90 +293,84 @@ export default function BookingTable() {
   // =========================================
 
   async function confirmBooking(booking: Booking) {
-    const total = Number(booking.total_price || 0);
+  const total = Number(booking.total_price || 0);
 
-    const suggestedDeposit =
-      total >= 4000
-        ? Math.ceil(total / 2)
-        : total;
+  const suggestedDeposit =
+    total >= 4000 ? Math.ceil(total / 2) : total;
 
-    if (!booking.slip_url) {
-      alert("ยังไม่มีสลิป กรุณาตรวจสอบก่อนอนุมัติ");
-      return;
-    }
+  const hasSlip = Boolean(booking.slip_url);
 
-    const amountInput = window.prompt(
-      `ตรวจสอบยอดชำระของ ${booking.booking_code}\n\n` +
-        `มูลค่าการจอง: ${money(total)}\n` +
-        `ยอดมัดจำที่แนะนำ: ${money(suggestedDeposit)}\n\n` +
-        `กรอกยอดเงินจริงตามสลิปที่ตรวจสอบแล้ว (บาท)`
+  if (!hasSlip) {
+    const verified = window.confirm(
+      `⚠️ รายการ ${booking.booking_code} ไม่มีสลิปแนบ\n\n` +
+      `กรุณาตรวจสอบเงินเข้าบัญชีธนาคารด้วยตนเองก่อน\n\n` +
+      `หากได้รับเงินจริงแล้ว กดตกลงเพื่อดำเนินการต่อ`
     );
 
-    if (amountInput === null) {
-      return;
-    }
-
-    const amount = Number(amountInput.replace(/,/g, "").trim());
-
-    if (
-      !Number.isSafeInteger(amount) ||
-      amount <= 0 ||
-      amount > total
-    ) {
-      alert("กรุณากรอกยอดเงินจริงเป็นจำนวนเต็ม และไม่เกินมูลค่าการจอง");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `ยืนยันการรับเงินและการจองหรือไม่?\n\n` +
-        `เลขจอง: ${booking.booking_code}\n` +
-        `มูลค่าการจอง: ${money(total)}\n` +
-        `รับเงินจริง: ${money(amount)}\n` +
-        `ยอดคงเหลือหลังรายการนี้: ${money(total - amount)}`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/admin/bookings/confirm", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: booking.id,
-          amount,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || "ไม่สามารถบันทึกการชำระเงินได้"
-        );
-      }
-
-      alert(
-        `บันทึกยอดรับเงินจริงเรียบร้อยแล้ว\n\n` +
-          `ยอดรับสะสม: ${money(data.receivedAmount)}\n` +
-          `ยอดคงเหลือ: ${money(data.remainingAmount)}\n` +
-          `อีเมล: ${data.emailSent ? "ส่งแล้ว" : "ไม่ได้ส่ง"}`
-      );
-
-      await loadBookings();
-    } catch (error) {
-      console.error("CONFIRM BOOKING ERROR =", error);
-
-      alert(
-        error instanceof Error
-          ? error.message
-          : "ไม่สามารถยืนยันการจองได้"
-      );
-    }
+    if (!verified) return;
   }
+
+  const amountInput = window.prompt(
+    `เลขจอง: ${booking.booking_code}\n` +
+    `มูลค่าการจอง: ${money(total)}\n` +
+    `ยอดมัดจำที่แนะนำ: ${money(suggestedDeposit)}\n\n` +
+    `กรอกยอดเงินจริงที่ตรวจสอบแล้ว (บาท)`
+  );
+
+  if (amountInput === null) return;
+
+  const amount = Number(amountInput.replace(/,/g, "").trim());
+
+  if (
+    !Number.isSafeInteger(amount) ||
+    amount <= 0 ||
+    amount > total
+  ) {
+    alert("กรุณากรอกยอดเงินจริงให้ถูกต้อง");
+    return;
+  }
+
+  if (!window.confirm(
+    `ยืนยันรับเงินจริงหรือไม่?\n\n` +
+    `เลขจอง: ${booking.booking_code}\n` +
+    `ยอดรับครั้งนี้: ${money(amount)}\n` +
+    `ยอดคงเหลือ: ${money(total - amount)}`
+  )) return;
+
+  try {
+    const response = await fetch("/api/admin/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: booking.id,
+        amount,
+        manually_verified_without_slip: !hasSlip,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "ไม่สามารถบันทึกการรับเงินได้");
+    }
+
+    alert(
+      `บันทึกการรับเงินสำเร็จ\n\n` +
+      `ยอดรับสะสม: ${money(data.receivedAmount)}\n` +
+      `ยอดคงเหลือ: ${money(data.remainingAmount)}\n` +
+      `อีเมล: ${data.emailSent ? "ส่งแล้ว" : "ไม่ได้ส่ง"}`
+    );
+
+    await loadBookings();
+  } catch (error) {
+    console.error("CONFIRM BOOKING ERROR =", error);
+    alert(
+      error instanceof Error
+        ? error.message
+        : "เกิดข้อผิดพลาดในการยืนยันการจอง"
+    );
+  }
+}
 
   // =========================================
   // ยกเลิกการจอง
