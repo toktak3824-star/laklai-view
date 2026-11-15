@@ -5,6 +5,7 @@ import { isAdminAuthenticated } from "@/lib/adminAuth";
 export const runtime = "nodejs";
 
 const BUCKET = "payment-slips";
+const RECEIPT_BUCKET = "booking-receipts";
 
 // ==========================================
 // PAYMENT TYPE
@@ -18,6 +19,27 @@ type PaymentRecord = {
   verified: boolean | null;
   verified_at: string | null;
   verified_by: string | null;
+  created_at: string;
+};
+
+// ==========================================
+// RECEIPT TYPE
+// ==========================================
+
+type ReceiptRecord = {
+  id: number;
+  payment_id: string;
+  booking_id: string;
+  receipt_no: string;
+  receipt_type: string;
+  amount_received: number | string;
+  booking_total: number | string;
+  cumulative_received: number | string;
+  remaining_amount: number | string;
+  pdf_path: string | null;
+  email_sent: boolean;
+  email_sent_at: string | null;
+  email_status: string;
   created_at: string;
 };
 
@@ -82,7 +104,33 @@ export async function GET() {
     }
 
     // ==========================================
-    // 3. รวมยอดรับเงินจริงแยกตามรายการจอง
+    // 3. ดึงประวัติใบเสร็จ
+    // ==========================================
+
+    let receipts: ReceiptRecord[] = [];
+
+    if (bookingIds.length > 0) {
+      const { data: receiptData, error: receiptError } =
+        await supabaseAdmin
+          .from("booking_receipts")
+          .select("*")
+          .in("booking_id", bookingIds)
+          .order("created_at", { ascending: true });
+
+      if (receiptError) {
+        console.error("ADMIN RECEIPTS ERROR =", receiptError);
+
+        return NextResponse.json(
+          { error: "ไม่สามารถโหลดประวัติใบเสร็จได้" },
+          { status: 500 }
+        );
+      }
+
+      receipts = (receiptData ?? []) as ReceiptRecord[];
+    }
+
+    // ==========================================
+    // 4. รวมยอดรับเงินจริงแยกตามรายการจอง
     // ==========================================
 
     const paymentsByBooking = new Map<
@@ -101,11 +149,34 @@ export async function GET() {
     }
 
     // ==========================================
-    // 4. สร้าง Signed URL สำหรับเปิดดูสลิป
+    // 5. รวมใบเสร็จแยกตามรายการจอง
+    // ==========================================
+
+    const receiptsByBooking = new Map<
+      string,
+      ReceiptRecord[]
+    >();
+
+    for (const receipt of receipts) {
+      const key = receipt.booking_id;
+
+      if (!receiptsByBooking.has(key)) {
+        receiptsByBooking.set(key, []);
+      }
+
+      receiptsByBooking.get(key)!.push(receipt);
+    }
+
+    // ==========================================
+    // 6. สร้าง Signed URL สำหรับสลิปและใบเสร็จ
     // ==========================================
 
     const bookingsWithDetails = await Promise.all(
       bookingList.map(async (booking) => {
+        // --------------------------------------
+        // Signed URL สลิป
+        // --------------------------------------
+
         let slipUrl = booking.slip_url;
 
         if (slipUrl) {
@@ -133,16 +204,17 @@ export async function GET() {
           }
         }
 
-        // ประวัติการชำระเงินของรายการจองนี้
+        // --------------------------------------
+        // ประวัติการชำระเงิน
+        // --------------------------------------
+
         const bookingPayments =
           paymentsByBooking.get(booking.id) ?? [];
 
-        // เลือกเฉพาะรายการที่ตรวจสอบแล้ว
         const verifiedPayments = bookingPayments.filter(
           (payment) => payment.verified === true
         );
 
-        // รวมยอดรับเงินจริง
         const receivedAmount = verifiedPayments.reduce(
           (sum, payment) =>
             sum + Number(payment.amount ?? 0),
@@ -153,38 +225,89 @@ export async function GET() {
           booking.total_price ?? 0
         );
 
-        // ตรวจสอบว่ามีประวัติการชำระเงินหรือไม่
         const hasPaymentHistory =
           bookingPayments.length > 0;
 
-        // คำนวณยอดคงเหลือ
-        // หากไม่มีประวัติ จะไม่สมมติยอดคงเหลือ
         const remainingAmount = hasPaymentHistory
           ? Math.max(totalPrice - receivedAmount, 0)
           : null;
 
+        // --------------------------------------
+        // ประวัติใบเสร็จ
+        // --------------------------------------
+
+        const bookingReceipts =
+          receiptsByBooking.get(booking.id) ?? [];
+
+        const receiptsWithUrls = await Promise.all(
+          bookingReceipts.map(async (receipt) => {
+            let receiptUrl: string | null = null;
+
+            if (receipt.pdf_path) {
+              const { data: signedData, error: signedError } =
+                await supabaseAdmin.storage
+                  .from(RECEIPT_BUCKET)
+                  .createSignedUrl(
+                    receipt.pdf_path,
+                    60 * 10
+                  );
+
+              if (signedError || !signedData?.signedUrl) {
+                console.error(
+                  "CREATE RECEIPT SIGNED URL ERROR =",
+                  receipt.id,
+                  signedError
+                );
+              } else {
+                receiptUrl = signedData.signedUrl;
+              }
+            }
+
+            return {
+              ...receipt,
+              amount_received: Number(
+                receipt.amount_received ?? 0
+              ),
+              booking_total: Number(
+                receipt.booking_total ?? 0
+              ),
+              cumulative_received: Number(
+                receipt.cumulative_received ?? 0
+              ),
+              remaining_amount: Number(
+                receipt.remaining_amount ?? 0
+              ),
+              receipt_url: receiptUrl,
+            };
+          })
+        );
+
+        // --------------------------------------
+        // ส่งข้อมูลกลับหน้า Admin
+        // --------------------------------------
+
         return {
           ...booking,
 
-          // URL สำหรับเปิดดูสลิป
           slip_url: slipUrl,
 
-          // ประวัติการรับเงินจริง
           payments: bookingPayments,
 
-          // ยอดที่ตรวจสอบแล้ว
           received_amount: receivedAmount,
 
-          // ยอดคงเหลือ
           remaining_amount: remainingAmount,
 
-          // มีประวัติการรับเงินจริงหรือไม่
           has_payment_history: hasPaymentHistory,
 
-          // รายการเก่าที่ยังต้องตรวจสอบ
           needs_payment_review:
             booking.booking_status === "confirmed" &&
             !hasPaymentHistory,
+
+          // ข้อมูลใบเสร็จทั้งหมดของรายการจอง
+          receipts: receiptsWithUrls,
+
+          // มีใบเสร็จหรือไม่
+          has_receipts: receiptsWithUrls.length > 0,
         };
       })
     );

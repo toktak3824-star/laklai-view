@@ -10,6 +10,24 @@ type Payment = {
   created_at?: string;
 };
 
+type Receipt = {
+  id: number;
+  payment_id: string;
+  booking_id: string;
+  receipt_no: string;
+  receipt_type: string;
+  amount_received: number;
+  booking_total: number;
+  cumulative_received: number;
+  remaining_amount: number;
+  pdf_path: string | null;
+  receipt_url: string | null;
+  email_sent: boolean;
+  email_sent_at: string | null;
+  email_status: string;
+  created_at: string;
+};
+
 type Booking = {
   id: string;
   booking_code?: string;
@@ -42,6 +60,8 @@ type Booking = {
   remaining_amount?: number | null;
   has_payment_history?: boolean;
   needs_payment_review?: boolean;
+  receipts?: Receipt[];
+  has_receipts?: boolean;
 };
 
 const money = (value: number) =>
@@ -51,6 +71,7 @@ export default function BookingTable() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [receiptLoading, setReceiptLoading] = useState<number | null>(null);
   
   const [receiptResult, setReceiptResult] = useState<{
     receiptNo: string;
@@ -388,6 +409,64 @@ export default function BookingTable() {
 }
 
   // =========================================
+  // จัดการใบเสร็จ PDF และอีเมล
+  // =========================================
+
+  async function handleReceiptAction(
+    receipt: Receipt,
+    action: "generate_pdf" | "send_email"
+  ) {
+    if (receiptLoading !== null) return;
+
+    const actionText =
+      action === "generate_pdf"
+        ? "สร้างใบเสร็จ PDF"
+        : "ส่งอีเมลใบเสร็จให้ลูกค้าอีกครั้ง";
+
+    if (!window.confirm(`ยืนยัน${actionText}หรือไม่?`)) return;
+
+    try {
+      setReceiptLoading(receipt.id);
+
+      const response = await fetch("/api/admin/receipts/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiptId: receipt.id,
+          action,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `ไม่สามารถ${actionText}ได้`);
+      }
+
+      if (action === "generate_pdf" && data.receiptUrl) {
+        window.open(data.receiptUrl, "_blank", "noopener,noreferrer");
+      }
+
+      alert(
+        action === "generate_pdf"
+          ? "สร้างใบเสร็จเรียบร้อยแล้ว"
+          : "ส่งอีเมลใบเสร็จเรียบร้อยแล้ว"
+      );
+
+      await loadBookings();
+    } catch (error) {
+      console.error("RECEIPT ACTION ERROR =", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "เกิดข้อผิดพลาดในการจัดการใบเสร็จ"
+      );
+    } finally {
+      setReceiptLoading(null);
+    }
+  }
+
+  // =========================================
   // ยกเลิกการจอง
   // =========================================
 
@@ -663,6 +742,7 @@ export default function BookingTable() {
               <th className="text-left">รับเงินจริง</th>
               <th className="text-left">คงเหลือ</th>
               <th className="text-left">สลิป</th>
+              <th className="text-left">ใบเสร็จ</th>
               <th className="text-left">สถานะ</th>
 
             </tr>
@@ -789,6 +869,72 @@ export default function BookingTable() {
                       ยังไม่มีสลิป
                     </span>
                   )}
+                </td>
+                <td>
+                  <div className="min-w-[190px] space-y-2">
+                    {booking.receipts?.length ? (
+                      booking.receipts.map((receipt) => (
+                        <div
+                          key={receipt.id}
+                          className="rounded-xl border border-stone-200 bg-white p-3"
+                        >
+                          <div className="font-semibold text-stone-800">
+                            {receipt.receipt_no}
+                          </div>
+
+                          <div className="mt-1 text-xs text-stone-500">
+                            รับเงิน {money(receipt.amount_received)}
+                          </div>
+
+                          <div className="mt-2 text-xs">
+                            อีเมล:
+                            {receipt.email_status === "sent" ? (
+                              <span className="ml-1 font-semibold text-green-700">ส่งแล้ว</span>
+                            ) : receipt.email_status === "sending" ? (
+                              <span className="ml-1 text-blue-700">กำลังส่ง</span>
+                            ) : receipt.email_status === "failed" ? (
+                              <span className="ml-1 font-semibold text-red-700">ส่งไม่สำเร็จ</span>
+                            ) : (
+                              <span className="ml-1 text-amber-700">รอดำเนินการ</span>
+                            )}
+                          </div>
+
+                          {receipt.receipt_url ? (
+                            <a
+                              href={receipt.receipt_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-3 block rounded-lg bg-green-700 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-green-800"
+                            >
+                              📄 ดูใบเสร็จ PDF
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={receiptLoading === receipt.id}
+                              onClick={() => handleReceiptAction(receipt, "generate_pdf")}
+                              className="mt-3 block w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              {receiptLoading === receipt.id ? "กำลังสร้าง..." : "สร้างใบเสร็จ"}
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            disabled={receiptLoading === receipt.id}
+                            onClick={() => handleReceiptAction(receipt, "send_email")}
+                            className="mt-2 block w-full rounded-lg bg-stone-700 px-3 py-2 text-sm font-semibold text-white hover:bg-stone-800 disabled:opacity-50"
+                          >
+                            {receiptLoading === receipt.id ? "กำลังดำเนินการ..." : "✉️ ส่งอีเมลอีกครั้ง"}
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-xs text-stone-400">
+                        ยังไม่มีข้อมูลใบเสร็จ
+                      </span>
+                    )}
+                  </div>
                 </td>
 
                 <td className="space-y-2">
