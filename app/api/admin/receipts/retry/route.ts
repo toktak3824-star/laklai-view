@@ -158,7 +158,7 @@ async function createReceiptPdf(data: {
     });
 
     doc.registerFont("Thai", regularFont);
-    doc.registerFont("ThaiBold", regularFont);
+doc.registerFont("ThaiBold", boldFont);
 
     const left = 48;
     const right = 547;
@@ -176,7 +176,7 @@ async function createReceiptPdf(data: {
       );
 
     doc
-  .font("Helvetica")
+  .font("Thai")
   .fontSize(10)
   .fillColor("#57534e")
   .text(
@@ -200,7 +200,7 @@ async function createReceiptPdf(data: {
       );
 
     doc
-      .font("Helvetica-Bold")
+      .font("ThaiBold")
       .fontSize(12)
       .fillColor("#292524")
       .text(
@@ -243,10 +243,10 @@ async function createReceiptPdf(data: {
         });
     };
 
-    label("เลขที่ใบเสร็จ", "Receipt No.", 190, data.receiptNo, "Helvetica-Bold");
+    label("เลขที่ใบเสร็จ", "Receipt No.", 190, data.receiptNo, "ThaiBold");
     label("วันที่รับเงิน", "Payment Date", 222, thaiDate(data.paymentDate));
     label("ชื่อผู้เข้าพัก", "Guest Name", 254, data.guestName);
-    label("รหัสการจอง", "Booking Code", 286, data.bookingCode, "Helvetica-Bold");
+    label("รหัสการจอง", "Booking Code", 286, data.bookingCode, "ThaiBold");
     label("บ้านพัก", "Accommodation", 318, data.room);
     label("วันเข้าพัก", "Check-in", 350, thaiDate(data.checkIn));
     label("วันออก", "Check-out", 382, thaiDate(data.checkOut));
@@ -303,7 +303,7 @@ async function createReceiptPdf(data: {
       );
 
     doc
-      .font("Helvetica")
+      .font("Thai")
       .fontSize(9)
       .text(
         "This document is issued as evidence of payment received as stated above.",
@@ -324,7 +324,7 @@ async function createReceiptPdf(data: {
       );
 
     doc
-      .font("Helvetica")
+      .font("Thai")
       .fontSize(9)
       .fillColor("#78716c")
       .text(
